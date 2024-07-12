@@ -1,0 +1,123 @@
+#include "include/ui.hpp"
+#include "engine/include/ai.hpp"
+#include "engine/include/engine.hpp"
+#include <iostream>
+#include <string>
+#include <vector>
+
+#define BOARD_RECTANGLE_WIDTH 45
+#define AI_DEPTH 4
+
+int main() {
+    std::string title("Chess engine v");
+    title += ENGINE_VERSION;
+
+    std::string fen;
+
+    std::cout << "Enter position : ";
+    getline(std::cin, fen);
+    
+    if (fen.size() == 0) {
+        fen = engine::startPosition;
+    }
+
+    bool inGame = true, selected = false;
+    unsigned int selectedCaseId = 64;
+    engine::Game game(fen);
+    ai::AI gameAI(game);
+    std::vector<engine::MoveSaveState> savedStates;
+    std::vector<engine::Move> savedMoves;
+
+    ui::init(title, BOARD_RECTANGLE_WIDTH, 2.0f);
+
+    std::vector<engine::Move> moves;
+
+    while (inGame) {
+        ui::clear();
+        ui::renderBoard();
+
+        if (selected) {
+            ui::renderSelectedCase(selectedCaseId);
+        }
+
+        ui::renderPosition(game.getPositionFEN());
+        ui::renderMoves(moves);
+        ui::renderCapturedPieces(0, game.getCapturedPieces(engine::Color::Black));
+        ui::renderCapturedPieces(1, game.getCapturedPieces(engine::Color::White));
+        ui::show();
+
+        if (game.getActiveColor() == engine::Color::Black) { // AI turn
+            ai::MoveValuation bestMoveValuation = gameAI.negaMax(AI_DEPTH);
+            std::cout << "Black AI move : " << game.move2str(bestMoveValuation.move) << " with valuation " << bestMoveValuation.valuation << std::endl;
+
+            savedMoves.push_back(bestMoveValuation.move);
+            savedStates.push_back(game.doMove(bestMoveValuation.move));
+
+            std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << game.evaluate() << std::endl;
+        } else {
+            int event = 64;
+
+            if ((event = ui::manageEvents()) == ERROR_EVENT) {
+                inGame = false;
+            } else if (event < INVALID_EVENT && event >= 0) {
+                if (selected && ((unsigned int)event == selectedCaseId)) {
+                    moves.clear();
+                    selected = false;
+                    // todo
+                } else {
+                    selectedCaseId = event;
+                    selected = true;
+
+                    for (engine::Move &move : moves) {
+                        if (move.getTargetSquare() == selectedCaseId) {
+                            selected = false;
+
+                            if (move.isPromotion()) {
+                                unsigned int promotedPieceFlag = ui::handlePromotion(game.getActiveColor(), move.getTargetSquare());
+
+                                move.clearFlags(M_PQUEEN);
+                                move.setFlags(promotedPieceFlag);
+                            }
+
+                            savedMoves.push_back(move);
+                            savedStates.push_back(game.doMove(move));
+
+                            std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << game.evaluate() << std::endl;
+
+                            break;
+                        }
+                    }
+
+                    if (selected) {
+                        moves = game.generateLegalMoves(selectedCaseId);
+                        std::cout << "Moves allowed :" << std::endl;
+
+                        for (engine::Move &move : moves) {
+                            std::cout << "\t" << game.move2str(move) << std::endl;
+                        }
+                    } else {
+                        moves.clear();
+                    }
+                }
+            } else if (event == PMOVE_EVENT && savedStates.size() > 0) {
+                game.undoMove(savedMoves.back(), savedStates.back());
+
+                savedMoves.pop_back();
+                savedStates.pop_back();
+
+                game.undoMove(savedMoves.back(), savedStates.back());
+
+                savedMoves.pop_back();
+                savedStates.pop_back();
+
+                std::cout << "New position : " << game.getPositionFEN() << std::endl;
+            }
+        }
+    }
+
+    ui::close();
+
+    std::cout << "Final position : " << game.getPositionFEN() << std::endl;
+
+    return 0;
+}
