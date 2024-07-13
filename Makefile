@@ -1,6 +1,6 @@
 DEBUG = FALSE
 
-SUBDIRS = tests
+SUBDIRS = tests cli-src
 SUBDIRSCLEAN = $(addsuffix .clean, $(SUBDIRS))
 
 E = @echo
