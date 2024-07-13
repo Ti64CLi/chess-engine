@@ -135,6 +135,7 @@ namespace engine {
             std::string getPositionFEN();
             Piece &getPiece(unsigned int squareId);
             const std::string move2str(Move &move);
+            Move str2move(const std::string &move);
     };
 }
 
