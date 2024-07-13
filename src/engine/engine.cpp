@@ -942,7 +942,7 @@ int Game::evaluate() {
             }
 
             // add some pre computations
-            unsigned int pieceScore = pieceTypeValue[piece.pieceType] + positionBonus[piece.pieceType][ID(column, line)];
+            unsigned int pieceScore = pieceTypeValue[piece.pieceType] + positionBonus[piece.pieceType][ID(column, 7 - line)];
 
             if (piece.color == Color::Black) {
                 blackScore += pieceScore;
