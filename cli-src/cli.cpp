@@ -12,7 +12,7 @@
 
 typedef unsigned long long u64;
 
-u64 perft(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::vector<u64> &data, bool print=true) {
+u64 perft(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::vector<u64> &data, bool divide=true, bool infos=true) {
     if (depth == 0) {
         return 1ULL;
     }
@@ -25,7 +25,7 @@ u64 perft(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::ve
         engine::MoveSaveState savedState = game.doMove(move);
 
         if (!game.isAttackedBy(game.getKingSquare(currentColor), game.getActiveColor())) {
-            if (depth == 1) {
+            if (depth == 1 && infos) {
                 if (move.isCapture()) {
                     data[0] += 1;
                 }
@@ -43,23 +43,82 @@ u64 perft(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::ve
                 }
             }
 
-            currentLeafs = perft(game, maxDepth, depth - 1, tmpData, false);
+            currentLeafs = perft(game, maxDepth, depth - 1, tmpData, false, false);
             nodes += currentLeafs;
-            for (size_t i = 0; i < data.size(); i++) {
+
+            for (size_t i = 0; i < data.size() && infos; i++) {
                 data[i] += tmpData[i];
             }
         }
 
         game.undoMove(move, savedState);
 
-        if (print) {
+        if (divide) {
             for (size_t i = 0; i < (maxDepth - depth); i++) {
                 std::cout << "\t";
             }
 
             std::cout << utils::caseNameFromId(move.getOriginSquare()) << utils::caseNameFromId(move.getTargetSquare()) << " : " << currentLeafs;
 
-            for (size_t i = 0; i < data.size(); i++) {
+            for (size_t i = 0; i < data.size() && infos; i++) {
+                std::cout << " " << tmpData[i];
+            }
+
+            std::cout << std::endl;
+        }
+    }
+
+    return nodes;
+}
+
+u64 perft_legal(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::vector<u64> &data, bool divide=true, bool infos=true) {
+    if (depth == 0) {
+        return 1ULL;
+    }
+
+    u64 nodes = 0;
+    for (engine::Move &move : game.generateAllLegalMoves()) {
+        u64 currentLeafs = 0;
+        std::vector<u64> tmpData(data.size(), 0);
+        engine::Color currentColor = game.getActiveColor();
+
+        engine::MoveSaveState savedState = game.doMove(move);
+
+        if (depth == 1 && infos) {
+            if (move.isCapture()) {
+                data[0] += 1;
+            }
+            if (move.getTargetSquare() == savedState.enPassantTargetSquare && game.getPiece(move.getTargetSquare()).pieceType == engine::PieceType::Pawn) {
+                data[1] += 1;
+            }
+            if (move.isCastling()) {
+                data[2] += 1;
+            }
+            if (move.isPromotion()) {
+                data[3] += 1;
+            }
+            if (game.isAttackedBy(game.getKingSquare(game.getActiveColor()), currentColor)) {
+                data[4] += 1;
+            }
+        }
+
+        currentLeafs = perft(game, maxDepth, depth - 1, tmpData, false, false);
+        nodes += currentLeafs;
+
+        game.undoMove(move, savedState);
+
+        for (size_t i = 0; i < data.size() && infos; i++) {
+            data[i] += tmpData[i];
+        }
+
+        if (divide) {
+            for (size_t i = 0; i < (maxDepth - depth); i++) {
+                std::cout << "\t";
+            }
+
+            std::cout << utils::caseNameFromId(move.getOriginSquare()) << utils::caseNameFromId(move.getTargetSquare()) << " : " << currentLeafs;
+
+            for (size_t i = 0; i < data.size() && infos; i++) {
                 std::cout << " " << tmpData[i];
             }
 
@@ -239,23 +298,79 @@ int main() {
             std::cout << "position loaded\n" << std::endl;
         } else if (splitCmd[0] == "perft") {
             unsigned int perftDepth = 0;
+            bool divide = false, infos = false;
 
             if (splitCmd.size() > 1) {
-                perftDepth = std::stoi(splitCmd[1]);
+                unsigned int offset = 0;
+
+                if (splitCmd[1] == "divide") {
+                    divide = true;
+                    offset = 1;
+                }
+
+                if (splitCmd.size() > 1 + offset) {
+                    perftDepth = std::stoi(splitCmd[1 + offset]);
+                }
+
+                if (splitCmd.size() > 2 + offset && splitCmd[2 + offset] == "infos") {
+                    infos = true;
+                }
             }
 
             std::vector<u64> data = {0, 0, 0, 0, 0};
             auto start = std::chrono::high_resolution_clock::now();
 
-            u64 p = perft(game, perftDepth, perftDepth, data);
+            u64 p = perft(game, perftDepth, perftDepth, data, divide, infos);
 
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
             std::cout << "perft(" << perftDepth << ") = " << p;
 
-            for (u64 &d : data) {
-                std::cout << " " << d;
+            if (infos) {
+                for (u64 &d : data) {
+                    std::cout << " " << d;
+                }
+            }
+
+            float s = (float)duration.count() / 1000.f;
+            std::cout << "\n";
+            std::cout << "Time : " << duration.count() << "ms => " << s << "s : " << (float)p / s << " N/s\n" << std::endl;
+        } else if (splitCmd[0] == "perft_legal") {
+            unsigned int perftDepth = 0;
+            bool divide = false, infos = false;
+
+            if (splitCmd.size() > 1) {
+                unsigned int offset = 0;
+
+                if (splitCmd[1] == "divide") {
+                    divide = true;
+                    offset = 1;
+                }
+
+                if (splitCmd.size() > 1 + offset) {
+                    perftDepth = std::stoi(splitCmd[1 + offset]);
+                }
+
+                if (splitCmd.size() > 2 + offset && splitCmd[2 + offset] == "infos") {
+                    infos = true;
+                }
+            }
+
+            std::vector<u64> data = {0, 0, 0, 0, 0};
+            auto start = std::chrono::high_resolution_clock::now();
+
+            u64 p = perft_legal(game, perftDepth, perftDepth, data, divide, infos);
+
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+            std::cout << "perft(" << perftDepth << ") = " << p;
+
+            if (infos) {
+                for (u64 &d : data) {
+                    std::cout << " " << d;
+                }
             }
 
             float s = (float)duration.count() / 1000.f;
@@ -285,7 +400,12 @@ int main() {
             std::cout << "\tundo [<n>] : undo <n> moves (1 by default)\n";
             std::cout << "\tmoves <square> : display the legal moves from the given <square>\n";
             std::cout << "\tsearch [<max depth>] : search the best move (<max depth> default is " << SEARCH_DEPTH << ")\n";
-            std::cout << "\tperft [<max depth>] : execute perft(<max depth>) (<max depth> default is " << 0 << ")\n" << std::endl;
+            std::cout << "\tperft [divide] [<max depth>] [infos] : execute perft(<max depth>) with [divide] or additional [infos] (<max depth> default is " << 0 << ")\n";
+            std::cout << "\tperft_legal [divide] [<max depth>] [infos] : execute perft_legal(<max depth>) with [divide] or additional [infos] (<max depth> default is " << 0 << ")\n";
+            std::cout << "\t\t\tThe difference between perft and perft_legal is that perft_legal generate legal moves\n";
+            std::cout << "\t\t\twhich can be expensive since to check if a move is legal, the engine do the move,\n";
+            std::cout << "\t\t\tthen check if it lefts the king in check, and then undo the move, which adds a second\n";
+            std::cout << "\t\t\tlayer of do/undo\n" << std::endl;
         }
     }
 
