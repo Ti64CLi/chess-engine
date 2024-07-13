@@ -1,3 +1,4 @@
+#include "engine/include/utils.hpp"
 #include "include/ui.hpp"
 #include "engine/include/ai.hpp"
 #include "engine/include/engine.hpp"
@@ -6,7 +7,7 @@
 #include <vector>
 
 #define BOARD_RECTANGLE_WIDTH 45
-#define AI_DEPTH 4
+#define AI_DEPTH 5
 
 int main() {
     std::string title("Chess engine v");
@@ -49,6 +50,7 @@ int main() {
         if (game.getActiveColor() == engine::Color::Black) { // AI turn
             ai::MoveValuation bestMoveValuation = gameAI.negaMax(AI_DEPTH);
             std::cout << "Black AI move : " << game.move2str(bestMoveValuation.move) << " with valuation " << bestMoveValuation.valuation << std::endl;
+            std::cout << "Black AI move : " << utils::caseNameFromId(bestMoveValuation.move.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.move.getTargetSquare()) << std::endl;
 
             savedMoves.push_back(bestMoveValuation.move);
             savedStates.push_back(game.doMove(bestMoveValuation.move));
@@ -100,6 +102,9 @@ int main() {
                     }
                 }
             } else if (event == PMOVE_EVENT && savedStates.size() > 0) {
+                selected = false;
+                moves.clear();
+
                 game.undoMove(savedMoves.back(), savedStates.back());
 
                 savedMoves.pop_back();
