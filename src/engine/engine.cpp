@@ -797,7 +797,7 @@ int Game::evaluate() {
         {PieceType::King, 20000},
     };
 
-    static const float positionBonusPawn[] = {
+    static const int positionBonusPawn[] = {
         0,  0,  0,  0,  0,  0,  0,  0,
         50, 50, 50, 50, 50, 50, 50, 50,
         10, 10, 20, 30, 30, 20, 10, 10,
@@ -808,7 +808,7 @@ int Game::evaluate() {
         0,  0,  0,  0,  0,  0,  0,  0
     };
 
-    static const float positionBonusKnight[] = {
+    static const int positionBonusKnight[] = {
         -50,-40,-30,-30,-30,-30,-40,-50,
         -40,-20,  0,  0,  0,  0,-20,-40,
         -30,  0, 10, 15, 15, 10,  0,-30,
@@ -819,7 +819,7 @@ int Game::evaluate() {
         -50,-40,-30,-30,-30,-30,-40,-50,
     };
 
-    static const float positionBonusBishop[] = {
+    static const int positionBonusBishop[] = {
         -20,-10,-10,-10,-10,-10,-10,-20,
         -10,  0,  0,  0,  0,  0,  0,-10,
         -10,  0,  5, 10, 10,  5,  0,-10,
@@ -830,7 +830,7 @@ int Game::evaluate() {
         -20,-10,-10,-10,-10,-10,-10,-20,
     };
 
-    static const float positionBonusRook[] = {
+    static const int positionBonusRook[] = {
         0,  0,  0,  0,  0,  0,  0,  0,
         5, 10, 10, 10, 10, 10, 10,  5,
         -5,  0,  0,  0,  0,  0,  0, -5,
@@ -841,7 +841,7 @@ int Game::evaluate() {
         0,  0,  0,  5,  5,  0,  0,  0
     };
 
-    static const float positionBonusQueen[] = {
+    static const int positionBonusQueen[] = {
         -20,-10,-10, -5, -5,-10,-10,-20,
         -10,  0,  0,  0,  0,  0,  0,-10,
         -10,  0,  5,  5,  5,  5,  0,-10,
@@ -852,7 +852,7 @@ int Game::evaluate() {
         -20,-10,-10, -5, -5,-10,-10,-20
     };
 
-    static const float positionBonusKing[] = { // for middle game normally
+    static const int positionBonusKingMiddleGame[] = { // for middle game normally
         -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30,
         -30,-40,-40,-50,-50,-40,-40,-30,
@@ -863,28 +863,33 @@ int Game::evaluate() {
         20, 30, 10,  0,  0, 10, 30, 20
     };
 
-    static std::unordered_map<PieceType, const float *> positionBonus = {
+    static std::unordered_map<PieceType, const int *> positionBonus = {
         {PieceType::Pawn, positionBonusPawn},
         {PieceType::Bishop, positionBonusBishop},
         {PieceType::Knight, positionBonusKnight},
         {PieceType::Rook, positionBonusRook},
         {PieceType::Queen, positionBonusQueen},
-        {PieceType::King, positionBonusKing},
+        {PieceType::King, positionBonusKingMiddleGame},
     };
 
     unsigned int blackScore = 0;
     unsigned int whiteScore = 0;
 
-    for (size_t line = 0; line < 8; line++) {
-        for (size_t column = 0; column < 8; column++) {
-            Piece &piece = this->board[ID(column, line)];
+    for (size_t rank = 0; rank < 8; rank++) {
+        for (size_t file = 0; file < 8; file++) {
+            Piece &piece = this->board[ID(file, rank)];
 
             if (piece.pieceType == PieceType::None) {
                 continue;
             }
 
             // add some pre computations
-            unsigned int pieceScore = pieceTypeValue[piece.pieceType] + positionBonus[piece.pieceType][ID(column, 7 - line)];
+            unsigned int relativeRank = rank;
+            if (piece.color == Color::White) {
+                relativeRank = 7 - rank;
+            }
+
+            unsigned int pieceScore = pieceTypeValue[piece.pieceType] + positionBonus[piece.pieceType][ID(file, relativeRank)];
 
             if (piece.color == Color::Black) {
                 blackScore += pieceScore;
