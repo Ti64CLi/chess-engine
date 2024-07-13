@@ -21,7 +21,7 @@ int AI::quiesceSearch(int alpha, int beta, unsigned int maxDepth) {
         alpha = stand_pat;
     }
 
-    std::vector<engine::Move> legalMoves = this->game.generateAllLegalMovesBeforeMate();
+    std::vector<engine::Move> legalMoves = this->game.generateAllLegalMoves();
 
     for (engine::Move &move : legalMoves) {
         if (!move.isCapture()) {
@@ -45,10 +45,10 @@ int AI::quiesceSearch(int alpha, int beta, unsigned int maxDepth) {
 
 int AI::alphaBeta(int alpha, int beta, unsigned int depth) {
     if (depth == 0) {
-        return this->quiesceSearch(alpha, beta, 2);
+        return this->game.evaluate()/*this->quiesceSearch(alpha, beta, 2)*/;
     }
 
-    std::vector<engine::Move> legalMoves = this->game.generateAllLegalMovesBeforeMate();
+    std::vector<engine::Move> legalMoves = this->game.generateAllLegalMoves();
 
     for (engine::Move &move : legalMoves) {
         engine::MoveSaveState savedState = this->game.doMove(move);
@@ -74,7 +74,7 @@ MoveValuation AI::negaMax(unsigned int depth) {
     }
 
     bestValuation.valuation = std::numeric_limits<int>::min();
-    std::vector<engine::Move> legalMoves = this->game.generateAllLegalMovesBeforeMate();
+    std::vector<engine::Move> legalMoves = this->game.generateAllLegalMoves();
 
     for (engine::Move &move : legalMoves) {
         engine::MoveSaveState savedState = this->game.doMove(move);

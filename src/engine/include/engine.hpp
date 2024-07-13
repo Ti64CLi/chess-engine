@@ -113,11 +113,9 @@ namespace engine {
             MoveSaveState saveState();
             void restoreState(MoveSaveState savedState);
 
+            bool isAttackedBy(unsigned int squareId, Color color);
             std::vector<Move> generatePseudoLegalMoves(unsigned int selectedCaseId);
             std::vector<Move> generateAllPseudoLegalMoves();
-            bool isAttackedBy(unsigned int squareId, Color color);
-            std::vector<Move> generateLegalMovesBeforeMate(unsigned int selectedCaseId);
-            std::vector<Move> generateAllLegalMovesBeforeMate();
             std::vector<Move> generateLegalMoves(unsigned int selectedCaseId);
             std::vector<Move> generateAllLegalMoves();
 

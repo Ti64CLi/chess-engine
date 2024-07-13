@@ -619,7 +619,7 @@ bool Game::isAttackedBy(unsigned int squareId, Color color) {
     return attacked;
 }
 
-std::vector<Move> Game::generateLegalMovesBeforeMate(unsigned int selectedCaseId) {
+std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId) {
     std::vector<Move> legalMoves;
 
     if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
@@ -627,17 +627,7 @@ std::vector<Move> Game::generateLegalMovesBeforeMate(unsigned int selectedCaseId
     }
 
     std::vector<Move> pseudoLegalMoves = this->generatePseudoLegalMoves(selectedCaseId);
-    unsigned int kingSquare = 0, opponentKingSquare = 0;
-
-    for (unsigned int square = 0; square < 64; square++) {
-        if (this->board[square].pieceType == PieceType::King) {
-            if (this->board[square].color == this->activeColor) {
-                kingSquare = square;
-            } else {
-                opponentKingSquare = square;
-            }
-        }
-    }
+    unsigned int kingSquare = this->getKingSquare(this->activeColor);
 
     // std::cout << "Computing legal moves (id = " << selectedCaseId << ")..." << std::endl;
 
@@ -650,14 +640,6 @@ std::vector<Move> Game::generateLegalMovesBeforeMate(unsigned int selectedCaseId
 
         MoveSaveState savedState = this->doMove(move);
 
-        if (this->isAttackedBy(opponentKingSquare, getOppositeColor(this->activeColor))) {
-            move.setFlags(M_CHECK);
-
-            /*if (this->generateAllLegalMoves().size() == 0) {
-                move.setFlags(M_MATE);
-            }*/
-        }
-
         if (!this->isAttackedBy(currentKingSquare, this->activeColor)) { // left our king in check ?
             legalMoves.push_back(move);
         }
@@ -668,7 +650,7 @@ std::vector<Move> Game::generateLegalMovesBeforeMate(unsigned int selectedCaseId
     return legalMoves;
 }
 
-std::vector<Move> Game::generateAllLegalMovesBeforeMate() {
+std::vector<Move> Game::generateAllLegalMoves() {
     std::vector<Move> legalMovesBeforeMate;
 
     for (unsigned int selectedCaseId = 0; selectedCaseId < 64; selectedCaseId++) {
@@ -676,52 +658,12 @@ std::vector<Move> Game::generateAllLegalMovesBeforeMate() {
             continue;
         }
 
-        std::vector<Move> currentLegalMovesBeforeMates = this->generateLegalMovesBeforeMate(selectedCaseId);
+        std::vector<Move> currentLegalMovesBeforeMates = this->generateLegalMoves(selectedCaseId);
 
         legalMovesBeforeMate.insert(legalMovesBeforeMate.end(), currentLegalMovesBeforeMates.begin(), currentLegalMovesBeforeMates.end());
     }
 
     return legalMovesBeforeMate;
-}
-
-std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId) {
-    std::vector<Move> legalMoves;
-
-    if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-        return legalMoves;
-    }
-
-    std::vector<Move> legalMovesBeforeMate = this->generateLegalMovesBeforeMate(selectedCaseId);
-
-    for (Move &move : legalMovesBeforeMate) {
-        MoveSaveState savedState = this->doMove(move);
-
-        if (this->generateAllLegalMovesBeforeMate().size() == 0) {
-            move.setFlags(M_MATE);
-        }
-
-        this->undoMove(move, savedState);
-
-        legalMoves.push_back(move);
-    }
-
-    return legalMoves;
-}
-
-std::vector<Move> Game::generateAllLegalMoves() {
-    std::vector<Move> legalMoves;
-
-    for (unsigned int selectedCaseId = 0; selectedCaseId < 64; selectedCaseId++) {
-        if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-            continue;
-        }
-
-        std::vector<Move> currentLegalMoves = this->generateLegalMoves(selectedCaseId);
-
-        legalMoves.insert(legalMoves.end(), currentLegalMoves.begin(), currentLegalMoves.end());
-    }
-
-    return legalMoves;
 }
 
 MoveSaveState Game::doMove(Move &move) {

@@ -68,7 +68,7 @@ u64 perft_unopt(engine::Game &game, unsigned int maxDepth, unsigned int depth, s
     }
 
     u64 nodes = 0;
-    for (engine::Move &move : game.generateAllLegalMovesBeforeMate()) {
+    for (engine::Move &move : game.generateAllLegalMoves()) {
         u64 currentLeafs = 0;
         std::vector<u64> tmpData(data.size(), 0);
         engine::Color currentColor = game.getActiveColor();
