@@ -805,7 +805,7 @@ void Game::undoMove(Move &move, MoveSaveState savedState) {
     this->switchActiveColor();
     this->restoreState(savedState);
 
-    Piece movedPiece = this->board[move.getTargetSquare()];
+    Piece &movedPiece = this->board[move.getTargetSquare()];
 
     if (move.isPromotion()) {
         movedPiece.pieceType = PieceType::Pawn;
