@@ -1111,4 +1111,17 @@ const std::string Game::move2str(Move &move) {
     return moveStr;
 }
 
+Move Game::str2move(const std::string &move) {
+    unsigned int originSquare = utils::idFromCaseName(move.substr(0, 2)), targetSquare = utils::idFromCaseName(move.substr(2));
+    std::vector<Move> legalMoves = this->generateLegalMoves(originSquare);
+
+    for (Move &currentMove : legalMoves) {
+        if (currentMove.getTargetSquare() == targetSquare) {
+            return currentMove;
+        }
+    }
+
+    return Move();
+}
+
 }
