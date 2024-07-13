@@ -67,12 +67,13 @@ int AI::alphaBeta(int alpha, int beta, unsigned int depth) {
 }
 
 MoveValuation AI::negaMax(unsigned int depth) {
+    MoveValuation bestValuation = {engine::Move(), this->game.evaluate()};
+
     if (depth == 0) {
-        return {engine::Move(), this->game.evaluate()};
+        return bestValuation;
     }
 
-    engine::Move bestMove;
-    int maxScore = std::numeric_limits<int>::min();
+    bestValuation.valuation = std::numeric_limits<int>::min();
     std::vector<engine::Move> legalMoves = this->game.generateAllLegalMovesBeforeMate();
 
     for (engine::Move &move : legalMoves) {
@@ -80,16 +81,16 @@ MoveValuation AI::negaMax(unsigned int depth) {
         int score = -this->alphaBeta(std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth - 1);
         this->game.undoMove(move, savedState);
 
-        if (score > maxScore) {
-            maxScore = score;
-            bestMove.setOriginSquare(move.getOriginSquare());
-            bestMove.setTargetSquare(move.getTargetSquare());
-            bestMove.setCapturedPiece(move.getCapturedPiece());
-            bestMove.setFlags(move.getFlags());
+        if (score > bestValuation.valuation) {
+            bestValuation.valuation = score;
+            bestValuation.move.setOriginSquare(move.getOriginSquare());
+            bestValuation.move.setTargetSquare(move.getTargetSquare());
+            bestValuation.move.setCapturedPiece(move.getCapturedPiece());
+            bestValuation.move.setFlags(move.getFlags());
         }
     }
 
-    return {bestMove, maxScore};
+    return bestValuation;
 }
 
 }
