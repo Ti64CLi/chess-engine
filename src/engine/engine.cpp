@@ -104,7 +104,12 @@ Color getOppositeColor(Color color) {
     }
 }
 
-Move::Move() {}
+Move::Move() {
+    this->originSquare = 64;
+    this->targetSquare = 64;
+    this->flags = M_NONE;
+    this->capturedPiece = Piece();
+}
 
 Move::Move(const Move &move) : originSquare(move.originSquare), 
                                targetSquare(move.targetSquare),
