@@ -91,7 +91,7 @@ int main() {
                     }
 
                     if (selected) {
-                        moves = game.generateLegalMoves(selectedCaseId);
+                        game.generateLegalMoves(moves, selectedCaseId);
                         std::cout << "Moves allowed :" << std::endl;
 
                         for (engine::Move &move : moves) {

@@ -77,7 +77,11 @@ u64 perft_legal(engine::Game &game, unsigned int maxDepth, unsigned int depth, s
     }
 
     u64 nodes = 0;
-    for (engine::Move &move : game.generateAllLegalMoves()) {
+    std::vector<engine::Move> legalMoves;
+
+    game.generateAllLegalMoves(legalMoves);
+
+    for (engine::Move &move : legalMoves) {
         u64 currentLeafs = 0;
         std::vector<u64> tmpData(data.size(), 0);
         engine::Color currentColor = game.getActiveColor();
@@ -264,7 +268,8 @@ int main() {
             if (originSquare > 63) {
                 std::cout << "Invalid square name : " << splitCmd[1] << "\n";
             } else {
-                std::vector<engine::Move> legalMoves = game.generateLegalMoves(originSquare);
+                std::vector<engine::Move> legalMoves;
+                game.generateLegalMoves(legalMoves, originSquare);
 
                 for (engine::Move &move : legalMoves) {
                     std::cout << move2str(move) << std::endl;
@@ -376,30 +381,12 @@ int main() {
             std::cout << "\n";
             std::cout << "Time : " << duration.count() << "ms => " << s << "s : " << (float)p / s << " N/s\n" << std::endl;
         } else if (splitCmd[0] == "search") {
-            unsigned int searchDepth = SEARCH_DEPTH/*, quiesceDepth = QUIESCE_DEPTH*/;
+            unsigned int searchDepth = SEARCH_DEPTH;
 
             if (splitCmd.size() > 1) {
                 searchDepth = std::stoi(splitCmd[1]);
-
-                /*if (splitCmd.size() > 2) {
-                    quiesceDepth = std::stoi(splitCmd[2]);
-                }*/
             }
 
-            std::cout << "Without move ordering :" << std::endl;
-            {
-                unsigned long long moveCount = 0;
-                auto start = std::chrono::high_resolution_clock::now();
-
-                engine::MoveValuation bestValuation = engine::negaMax(game, searchDepth, moveCount, false);
-
-                auto end = std::chrono::high_resolution_clock::now();
-                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-                float s = (float)duration.count() / 1000.f;
-
-                std::cout << "Visited " << moveCount << "nodes in " << duration.count() << "ms = " << s << "s => " << (float)moveCount / s << " N/s\n";
-                std::cout << "Best move : " << move2str(bestValuation.first) << " (valuation = " << bestValuation.second << ")\n" << std::endl;
-            }
             std::cout << "With move ordering :" << std::endl;
             {
                 unsigned long long moveCount = 0;
@@ -411,9 +398,23 @@ int main() {
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
                 float s = (float)duration.count() / 1000.f;
 
-                std::cout << "Visited " << moveCount << "nodes in " << duration.count() << "ms = " << s << "s => " << (float)moveCount / s << " N/s\n";
-                std::cout << "Best move : " << move2str(bestValuation.first) << " (valuation = " << bestValuation.second << ")\n" << std::endl;
+                std::cout << "Visited " << moveCount << " nodes in " << duration.count() << "ms = " << s << "s => " << (float)moveCount / s << " N/s\n";
+                std::cout << "Best move : " << move2str(bestValuation.first) << " (valuation = " << (float)bestValuation.second / 1000.f << ")\n" << std::endl;
             }
+            /*std::cout << "Without move ordering :" << std::endl;
+            {
+                unsigned long long moveCount = 0;
+                auto start = std::chrono::high_resolution_clock::now();
+
+                engine::MoveValuation bestValuation = engine::negaMax(game, searchDepth, moveCount, false);
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                float s = (float)duration.count() / 1000.f;
+
+                std::cout << "Visited " << moveCount << " nodes in " << duration.count() << "ms = " << s << "s => " << (float)moveCount / s << " N/s\n";
+                std::cout << "Best move : " << move2str(bestValuation.first) << " (valuation = " << (float)bestValuation.second / 1000.f << ")\n" << std::endl;
+            }*/
         } else if (splitCmd[0] == "exit") {
             break;
         } else if (splitCmd[0] == "help") {
