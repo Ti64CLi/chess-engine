@@ -1,6 +1,6 @@
 #include "engine/include/utils.hpp"
 #include "include/ui.hpp"
-#include "engine/include/ai.hpp"
+#include "engine/include/search.hpp"
 #include "engine/include/engine.hpp"
 #include <iostream>
 #include <string>
@@ -25,7 +25,6 @@ int main() {
     bool inGame = true, selected = false;
     unsigned int selectedCaseId = 64;
     engine::Game game(fen);
-    ai::AI gameAI(game);
     std::vector<engine::MoveSaveState> savedStates;
     std::vector<engine::Move> savedMoves;
 
@@ -48,12 +47,13 @@ int main() {
         ui::show();
 
         if (game.getActiveColor() == engine::Color::Black) { // AI turn
-            ai::MoveValuation bestMoveValuation = gameAI.negaMax(AI_DEPTH);
-            std::cout << "Black AI move : " << game.move2str(bestMoveValuation.move) << " with valuation " << bestMoveValuation.valuation << std::endl;
-            std::cout << "Black AI move : " << utils::caseNameFromId(bestMoveValuation.move.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.move.getTargetSquare()) << std::endl;
+            unsigned long long moveCount = 0;
+            engine::MoveValuation bestMoveValuation = engine::negaMax(game, AI_DEPTH, moveCount);
+            std::cout << "Black AI move : " << game.move2str(bestMoveValuation.first) << " with valuation " << bestMoveValuation.second << std::endl;
+            std::cout << "Black AI move : " << utils::caseNameFromId(bestMoveValuation.first.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.first.getTargetSquare()) << std::endl;
 
-            savedMoves.push_back(bestMoveValuation.move);
-            savedStates.push_back(game.doMove(bestMoveValuation.move));
+            savedMoves.push_back(bestMoveValuation.first);
+            savedStates.push_back(game.doMove(bestMoveValuation.first));
 
             std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << game.evaluate() << std::endl;
         } else {
