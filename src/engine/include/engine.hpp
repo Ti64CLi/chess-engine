@@ -118,10 +118,10 @@ class Game {
         bool isAttackedBy(unsigned int squareId, Color color);
         std::vector<Move> generatePseudoLegalMoves(unsigned int selectedCaseId);
         std::vector<Move> generateAllPseudoLegalMoves();
-        std::vector<Move> generateLegalMoves(unsigned int selectedCaseId, bool capturesOnly = false);
-        std::vector<Move> generateAllLegalMoves(bool capturesOnly = false);
+        void generateLegalMoves(std::vector<Move> &legalMoves, unsigned int selectedCaseId, bool capturesOnly = false);
+        void generateAllLegalMoves(std::vector<Move> &legalMoves, bool capturesOnly = false);
         int guessScore(Move &move);
-        std::vector<unsigned int> orderMoves(std::vector<Move> &moves);
+        void orderMoves(std::vector<Move> &moves, std::vector<unsigned int> &orderedIndices);
 
         MoveSaveState doMove(Move &move);
         void undoMove(Move &move, MoveSaveState savedState);

@@ -629,17 +629,13 @@ bool Game::isAttackedBy(unsigned int squareId, Color color) {
     return attacked;
 }
 
-std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId, bool capturesOnly) {
-    std::vector<Move> legalMoves;
-
+void Game::generateLegalMoves(std::vector<Move> &legalMoves, unsigned int selectedCaseId, bool capturesOnly) {
     if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-        return legalMoves;
+        return;
     }
 
     std::vector<Move> pseudoLegalMoves = this->generatePseudoLegalMoves(selectedCaseId);
     unsigned int kingSquare = this->getKingSquare(this->activeColor);
-
-    // std::cout << "Computing legal moves (id = " << selectedCaseId << ")..." << std::endl;
 
     for (Move move : pseudoLegalMoves) {
         if (capturesOnly && !move.isCapture()) {
@@ -660,24 +656,16 @@ std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId, bool cap
 
         this->undoMove(move, savedState);
     }
-
-    return legalMoves;
 }
 
-std::vector<Move> Game::generateAllLegalMoves(bool capturesOnly) {
-    std::vector<Move> legalMoves;
-
+void Game::generateAllLegalMoves(std::vector<Move> &legalMoves, bool capturesOnly) {
     for (unsigned int selectedCaseId = 0; selectedCaseId < 64; selectedCaseId++) {
         if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
             continue;
         }
 
-        std::vector<Move> currentLegalMoves = this->generateLegalMoves(selectedCaseId, capturesOnly);
-
-        legalMoves.insert(legalMoves.end(), currentLegalMoves.begin(), currentLegalMoves.end());
+        this->generateLegalMoves(legalMoves, selectedCaseId, capturesOnly);
     }
-
-    return legalMoves;
 }
 
 int Game::guessScore(Move &move) {
@@ -701,21 +689,18 @@ int Game::guessScore(Move &move) {
     return guessedScore;
 }
 
-std::vector<unsigned int> Game::orderMoves(std::vector<Move> &moves) {
+void Game::orderMoves(std::vector<Move> &moves, std::vector<unsigned int> &orderedIndices) {
     std::vector<Move> orderedMoves;
-    std::vector<unsigned int> indices;
     std::vector<int> guessedScores;
 
     for (unsigned int i = 0; i < moves.size(); i++) {
-        indices.push_back(i);
+        orderedIndices.push_back(i);
         guessedScores.push_back(this->guessScore(moves[i]));
     }
 
-    std::sort(indices.begin(), indices.end(), [&](unsigned int &i, unsigned int &j) {
+    std::sort(orderedIndices.begin(), orderedIndices.end(), [&](unsigned int &i, unsigned int &j) {
         return guessedScores[i] > guessedScores[j];
     });
-
-    return indices;
 }
 
 MoveSaveState Game::doMove(Move &move) {
@@ -915,8 +900,8 @@ int Game::evaluate() {
         {PieceType::King, positionBonusKingMiddleGame},
     };
 
-    unsigned int blackScore = 0;
-    unsigned int whiteScore = 0;
+    int blackScore = 0;
+    int whiteScore = 0;
 
     for (size_t rank = 0; rank < 8; rank++) {
         for (size_t file = 0; file < 8; file++) {
@@ -1103,7 +1088,8 @@ const std::string Game::move2str(Move &move) {
 
 Move Game::str2move(const std::string &move) {
     unsigned int originSquare = utils::idFromCaseName(move.substr(0, 2)), targetSquare = utils::idFromCaseName(move.substr(2));
-    std::vector<Move> legalMoves = this->generateLegalMoves(originSquare);
+    std::vector<Move> legalMoves;
+    this->generateLegalMoves(legalMoves, originSquare);
 
     for (Move &currentMove : legalMoves) {
         if (currentMove.getTargetSquare() == targetSquare) {
