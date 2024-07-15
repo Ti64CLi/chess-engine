@@ -1,5 +1,5 @@
 #include "../src/engine/include/engine.hpp"
-#include "../src/engine/include/ai.hpp"
+#include "../src/engine/include/search.hpp"
 #include "../src/engine/include/utils.hpp"
 #include <algorithm>
 #include <chrono>
@@ -205,14 +205,13 @@ void showBoard(engine::Game &game) {
         std::cout << (char)('a' + i) << "   ";
     }
 
-    std::cout << std::endl;
+    std::cout << "\n" << std::endl;
 
     std::cout << ((game.getActiveColor() == engine::Color::Black) ? "Black" : "White") << "'s turn\n" << std::endl;
 }
 
 int main() {
     engine::Game game;
-    ai::AI gameAI(game);
     std::string cmd;
     std::vector<std::string> splitCmd;
     std::vector<engine::Move> moveStack;
@@ -387,9 +386,34 @@ int main() {
                 }*/
             }
 
-            ai::MoveValuation bestValuation = gameAI.negaMax(searchDepth/*, quiesceDepth*/);
+            std::cout << "Without move ordering :" << std::endl;
+            {
+                unsigned long long moveCount = 0;
+                auto start = std::chrono::high_resolution_clock::now();
 
-            std::cout << "Best move : " << move2str(bestValuation.move) << " (valuation = " << bestValuation.valuation << ")\n" << std::endl;
+                engine::MoveValuation bestValuation = engine::negaMax(game, searchDepth, moveCount, false);
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                float s = (float)duration.count() / 1000.f;
+
+                std::cout << "Visited " << moveCount << "nodes in " << duration.count() << "ms = " << s << "s => " << (float)moveCount / s << " N/s\n";
+                std::cout << "Best move : " << move2str(bestValuation.first) << " (valuation = " << bestValuation.second << ")\n" << std::endl;
+            }
+            std::cout << "With move ordering :" << std::endl;
+            {
+                unsigned long long moveCount = 0;
+                auto start = std::chrono::high_resolution_clock::now();
+
+                engine::MoveValuation bestValuation = engine::negaMax(game, searchDepth, moveCount, true);
+
+                auto end = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                float s = (float)duration.count() / 1000.f;
+
+                std::cout << "Visited " << moveCount << "nodes in " << duration.count() << "ms = " << s << "s => " << (float)moveCount / s << " N/s\n";
+                std::cout << "Best move : " << move2str(bestValuation.first) << " (valuation = " << bestValuation.second << ")\n" << std::endl;
+            }
         } else if (splitCmd[0] == "exit") {
             break;
         } else if (splitCmd[0] == "help") {
