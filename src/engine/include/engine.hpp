@@ -24,117 +24,122 @@
 #define XX 64
 
 namespace engine {
-    const std::string startPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+const std::string startPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+enum PieceType {
+    None = 0,
+    Pawn,
+    Bishop,
+    Knight,
+    Rook,
+    Queen,
+    King,
+    Invalid,
+};
+
+enum Color {
+    Black,
+    White,
+};
+
+Color getOppositeColor(Color color);
+
+struct Piece {
+    PieceType pieceType;
+    Color color;
+};
+
+char pieceSymbol(Piece &piece);
+
+class Move {
+    private:
+        unsigned int originSquare;
+        unsigned int targetSquare;
+        unsigned int flags;
+        Piece capturedPiece;
     
-    enum PieceType {
-        None = 0,
-        Pawn,
-        Bishop,
-        Knight,
-        Rook,
-        Queen,
-        King,
-        Invalid,
-    };
+    public:
+        Move();
+        Move(unsigned int originSquare, unsigned int targetSquare, unsigned int flags, Piece capturedPiece);
 
-    enum Color {
-        Black,
-        White,
-    };
+        void setOriginSquare(unsigned int originSquare);
+        void setTargetSquare(unsigned int targetSquare);
+        void setCapturedPiece(Piece capturedPiece);
+        void setFlags(unsigned int flags);
+        void clearFlags(unsigned int flags);
+        unsigned int getOriginSquare();
+        unsigned int getTargetSquare();
+        Piece getCapturedPiece();
+        unsigned int getFlags();
+        bool isEnPassant();
+        bool isCapture();
+        bool isPromotion();
+        bool isCastling();
+        bool isCheck();
+        bool isMate();
+        unsigned int getCastlingSide();
+        PieceType getPromotedPiece();
+};
 
-    struct Piece {
-        PieceType pieceType;
-        Color color;
-    };
+struct MoveSaveState {
+    std::unordered_map<Color, std::vector<bool>> castle;
+    unsigned int enPassantTargetSquare;
+    unsigned int halfMoveNumber;
+    unsigned int fullMoveNumber;
+    std::unordered_map<Color, unsigned int> kingSquare;
+};
 
-    char pieceSymbol(Piece &piece);
+class Game {
+    private:
+        std::vector<Piece> board;
+        //std::unordered_map<Color, std::vector<unsigned int>> attacks;
+        // std::vector<Move> legalMoves;
 
-    class Move {
-        private:
-            unsigned int originSquare;
-            unsigned int targetSquare;
-            unsigned int flags;
-            Piece capturedPiece;
-        
-        public:
-            Move();
-            Move(const Move &move);
-            Move(unsigned int originSquare, unsigned int targetSquare, unsigned int flags, Piece capturedPiece);
-
-            void setOriginSquare(unsigned int originSquare);
-            void setTargetSquare(unsigned int targetSquare);
-            void setCapturedPiece(Piece capturedPiece);
-            void setFlags(unsigned int flags);
-            void clearFlags(unsigned int flags);
-            unsigned int getOriginSquare();
-            unsigned int getTargetSquare();
-            Piece getCapturedPiece();
-            unsigned int getFlags();
-            bool isEnPassant();
-            bool isCapture();
-            bool isPromotion();
-            bool isCastling();
-            bool isCheck();
-            bool isMate();
-            unsigned int getCastlingSide();
-            PieceType getPromotedPiece();
-    };
-
-    struct MoveSaveState {
         std::unordered_map<Color, std::vector<bool>> castle;
-        unsigned int enPassantTargetSquare;
+        unsigned int enPassantTargetSquare; // en passant target square (64 if none)
         unsigned int halfMoveNumber;
         unsigned int fullMoveNumber;
+        Color activeColor;
+
         std::unordered_map<Color, unsigned int> kingSquare;
-    };
+        std::unordered_map<Color, std::unordered_map<PieceType, unsigned char>> capturedPieces;
 
-    class Game {
-        private:
-            std::vector<Piece> board;
-            //std::unordered_map<Color, std::vector<unsigned int>> attacks;
-            // std::vector<Move> legalMoves;
+    public:
+        Game();
+        Game(Game &game);
+        Game(const std::string fen);
 
-            std::unordered_map<Color, std::vector<bool>> castle;
-            unsigned int enPassantTargetSquare; // en passant target square (64 if none)
-            unsigned int halfMoveNumber;
-            unsigned int fullMoveNumber;
-            Color activeColor;
+        int loadPosition(const std::string fen);
 
-            std::unordered_map<Color, unsigned int> kingSquare;
-            std::unordered_map<Color, std::unordered_map<PieceType, unsigned char>> capturedPieces;
-        
-        public:
-            Game();
-            Game(Game &game);
-            Game(const std::string fen);
+        MoveSaveState saveState();
+        void restoreState(MoveSaveState savedState);
 
-            int loadPosition(const std::string fen);
+        bool isAttackedBy(unsigned int squareId, Color color);
+        std::vector<Move> generatePseudoLegalMoves(unsigned int selectedCaseId);
+        std::vector<Move> generateAllPseudoLegalMoves();
+        std::vector<Move> generateLegalMoves(unsigned int selectedCaseId, bool capturesOnly = false);
+        std::vector<Move> generateAllLegalMoves(bool capturesOnly = false);
+        int guessScore(Move &move);
+        std::vector<unsigned int> orderMoves(std::vector<Move> &moves);
 
-            MoveSaveState saveState();
-            void restoreState(MoveSaveState savedState);
+        MoveSaveState doMove(Move &move);
+        void undoMove(Move &move, MoveSaveState savedState);
+        void updateIrreversibles(Move &move);
+        void switchActiveColor();
 
-            bool isAttackedBy(unsigned int squareId, Color color);
-            std::vector<Move> generatePseudoLegalMoves(unsigned int selectedCaseId);
-            std::vector<Move> generateAllPseudoLegalMoves();
-            std::vector<Move> generateLegalMoves(unsigned int selectedCaseId);
-            std::vector<Move> generateAllLegalMoves();
+        int evaluate();
 
-            MoveSaveState doMove(Move &move);
-            void undoMove(Move &move, MoveSaveState savedState);
-            void updateIrreversibles(Move &move);
-            void switchActiveColor();
+        unsigned int getEnPassantTargetSquare();
+        unsigned int getKingSquare(Color color);
+        std::unordered_map<PieceType, unsigned char> &getCapturedPieces(Color color);
+        Color getActiveColor();
+        std::string getPositionFEN();
+        Piece &getPiece(unsigned int squareId);
+        const std::string move2str(Move &move);
+        Move str2move(const std::string &move);
+};
 
-            int evaluate();
-
-            unsigned int getEnPassantTargetSquare();
-            unsigned int getKingSquare(Color color);
-            std::unordered_map<PieceType, unsigned char> &getCapturedPieces(Color color);
-            Color getActiveColor();
-            std::string getPositionFEN();
-            Piece &getPiece(unsigned int squareId);
-            const std::string move2str(Move &move);
-            Move str2move(const std::string &move);
-    };
-}
+} // namespace engine
 
 #endif

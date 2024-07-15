@@ -1,5 +1,6 @@
 #include "include/utils.hpp"
 #include "include/engine.hpp"
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -34,6 +35,15 @@ static const unsigned int mailbox8x8[64] = {
 static std::unordered_map<engine::Color, std::vector<std::pair<unsigned int, unsigned int>>> castlingRookSquareIds = {
     {engine::Color::Black, {{63, 61}, {56, 59}}},
     {engine::Color::White, {{7, 5}, {0, 3}}},
+};
+
+static std::unordered_map<engine::PieceType, unsigned int> pieceTypeValue = {
+    {engine::PieceType::Pawn, 100},
+    {engine::PieceType::Bishop, 300},
+    {engine::PieceType::Knight, 300},
+    {engine::PieceType::Rook, 500},
+    {engine::PieceType::Queen, 900},
+    {engine::PieceType::King, 20000},
 };
 
 namespace engine {
@@ -111,10 +121,10 @@ Move::Move() {
     this->capturedPiece = Piece();
 }
 
-Move::Move(const Move &move) : originSquare(move.originSquare), 
+/*Move::Move(const Move &move) : originSquare(move.originSquare),
                                targetSquare(move.targetSquare),
                                flags(move.flags),
-                               capturedPiece(move.capturedPiece) {}
+                               capturedPiece(move.capturedPiece) {}*/
                                
 Move::Move(unsigned int originSquare, 
            unsigned int targetSquare, 
@@ -619,7 +629,7 @@ bool Game::isAttackedBy(unsigned int squareId, Color color) {
     return attacked;
 }
 
-std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId) {
+std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId, bool capturesOnly) {
     std::vector<Move> legalMoves;
 
     if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
@@ -632,6 +642,10 @@ std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId) {
     // std::cout << "Computing legal moves (id = " << selectedCaseId << ")..." << std::endl;
 
     for (Move move : pseudoLegalMoves) {
+        if (capturesOnly && !move.isCapture()) {
+            continue;
+        }
+
         unsigned int currentKingSquare = kingSquare;
 
         if (move.getOriginSquare() == kingSquare) {
@@ -650,20 +664,58 @@ std::vector<Move> Game::generateLegalMoves(unsigned int selectedCaseId) {
     return legalMoves;
 }
 
-std::vector<Move> Game::generateAllLegalMoves() {
-    std::vector<Move> legalMovesBeforeMate;
+std::vector<Move> Game::generateAllLegalMoves(bool capturesOnly) {
+    std::vector<Move> legalMoves;
 
     for (unsigned int selectedCaseId = 0; selectedCaseId < 64; selectedCaseId++) {
         if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
             continue;
         }
 
-        std::vector<Move> currentLegalMovesBeforeMates = this->generateLegalMoves(selectedCaseId);
+        std::vector<Move> currentLegalMoves = this->generateLegalMoves(selectedCaseId, capturesOnly);
 
-        legalMovesBeforeMate.insert(legalMovesBeforeMate.end(), currentLegalMovesBeforeMates.begin(), currentLegalMovesBeforeMates.end());
+        legalMoves.insert(legalMoves.end(), currentLegalMoves.begin(), currentLegalMoves.end());
     }
 
-    return legalMovesBeforeMate;
+    return legalMoves;
+}
+
+int Game::guessScore(Move &move) {
+    int guessedScore = 0;
+
+    PieceType movedPiece = this->board[move.getOriginSquare()].pieceType;
+    PieceType capturedPiece = move.getCapturedPiece().pieceType;
+
+    if (move.isCapture()) {
+        guessedScore += 10 * ::pieceTypeValue[capturedPiece] - ::pieceTypeValue[movedPiece];
+    }
+
+    if (move.isPromotion()) {
+        guessedScore += ::pieceTypeValue[move.getPromotedPiece()];
+    }
+
+    if (this->isAttackedBy(move.getTargetSquare(), getOppositeColor(this->activeColor))) {
+        guessedScore -= ::pieceTypeValue[movedPiece];
+    }
+
+    return guessedScore;
+}
+
+std::vector<unsigned int> Game::orderMoves(std::vector<Move> &moves) {
+    std::vector<Move> orderedMoves;
+    std::vector<unsigned int> indices;
+    std::vector<int> guessedScores;
+
+    for (unsigned int i = 0; i < moves.size(); i++) {
+        indices.push_back(i);
+        guessedScores.push_back(this->guessScore(moves[i]));
+    }
+
+    std::sort(indices.begin(), indices.end(), [&](unsigned int &i, unsigned int &j) {
+        return guessedScores[i] > guessedScores[j];
+    });
+
+    return indices;
 }
 
 MoveSaveState Game::doMove(Move &move) {
@@ -788,15 +840,6 @@ void Game::switchActiveColor() {
 
 // todo later
 int Game::evaluate() {
-    static std::unordered_map<PieceType, unsigned int> pieceTypeValue = {
-        {PieceType::Pawn, 100},
-        {PieceType::Bishop, 300},
-        {PieceType::Knight, 300},
-        {PieceType::Rook, 500},
-        {PieceType::Queen, 900},
-        {PieceType::King, 20000},
-    };
-
     static const int positionBonusPawn[] = {
         0,  0,  0,  0,  0,  0,  0,  0,
         50, 50, 50, 50, 50, 50, 50, 50,
@@ -889,7 +932,7 @@ int Game::evaluate() {
                 relativeRank = 7 - rank;
             }
 
-            unsigned int pieceScore = pieceTypeValue[piece.pieceType] + positionBonus[piece.pieceType][ID(file, relativeRank)];
+            unsigned int pieceScore = ::pieceTypeValue[piece.pieceType] + positionBonus[piece.pieceType][ID(file, relativeRank)];
 
             if (piece.color == Color::Black) {
                 blackScore += pieceScore;
