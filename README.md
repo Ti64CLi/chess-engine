@@ -2,10 +2,12 @@
 
 A basic chess engine (and not really optimized (at all))
 
-Should mostly work, even though the AI seems buggy (for example with a DEPTH of 4 as black on second move, it doesn't find a move with a valuation better than -inf...)
+Should mostly work, even though the AI is way too slow.
 
 I wrote it some time ago and I am currently trying to improve/fix it
 
+Doesn't support draw by repetition yet
+
 # Bugs
 
-- IA doesn't work with an even search depth
+- Doesn't return a default move if a search results in checkmate
