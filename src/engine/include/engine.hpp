@@ -116,8 +116,8 @@ class Game {
         void restoreState(MoveSaveState savedState);
 
         bool isAttackedBy(unsigned int squareId, Color color);
-        std::vector<Move> generatePseudoLegalMoves(unsigned int selectedCaseId);
-        std::vector<Move> generateAllPseudoLegalMoves();
+        void generatePseudoLegalMoves(std::vector<Move> &pseudoLegalMoves, unsigned int selectedCaseId);
+        void generateAllPseudoLegalMoves(std::vector<Move> &pseudoLegalMoves);
         void generateLegalMoves(std::vector<Move> &legalMoves, unsigned int selectedCaseId, bool capturesOnly = false);
         void generateAllLegalMoves(std::vector<Move> &legalMoves, bool capturesOnly = false);
         int guessScore(Move &move);
@@ -130,6 +130,7 @@ class Game {
 
         int evaluate();
 
+        std::vector<bool> getCastlingRights(Color color);
         unsigned int getEnPassantTargetSquare();
         unsigned int getKingSquare(Color color);
         std::unordered_map<PieceType, unsigned char> &getCapturedPieces(Color color);

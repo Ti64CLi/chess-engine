@@ -373,7 +373,19 @@ int Game::loadPosition(const std::string fen) {
 }
 
 MoveSaveState Game::saveState() {
-    return {{{Color::Black, this->castle[Color::Black]}, {Color::White, this->castle[Color::White]}}, this->enPassantTargetSquare, this->halfMoveNumber, this->fullMoveNumber, {{Color::Black, this->kingSquare[Color::Black]}, {Color::White, this->kingSquare[Color::White]}}};
+    return {
+        {
+            {Color::Black, this->castle[Color::Black]},
+            {Color::White, this->castle[Color::White]}
+        },
+        this->enPassantTargetSquare,
+        this->halfMoveNumber,
+        this->fullMoveNumber,
+        {
+            {Color::Black, this->kingSquare[Color::Black]},
+            {Color::White, this->kingSquare[Color::White]}
+        },
+    };
 }
 
 void Game::restoreState(MoveSaveState savedState) {
@@ -386,14 +398,7 @@ void Game::restoreState(MoveSaveState savedState) {
     this->kingSquare[Color::White] = savedState.kingSquare[Color::White];
 }
 
-std::vector<Move> Game::generatePseudoLegalMoves(unsigned int selectedCaseId) {
-    std::vector<Move> pseudoLegalMoves;
-
-    if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-        return pseudoLegalMoves;
-    }
-    // std::cout << "Computing pseudo legal moves (id = " << selectedCaseId << ")..." << std::endl;
-
+void Game::generatePseudoLegalMoves(std::vector<Move> &pseudoLegalMoves, unsigned int selectedCaseId) {
     static std::unordered_map<PieceType, std::pair<std::vector<int>, bool>> pieceTypeOffsets = {
         {PieceType::Bishop, {{-11, -9, 9, 11}, true}},
         {PieceType::Knight, {{-21, -19, -12, -8, 8, 12, 19, 21}, false}},
@@ -407,13 +412,12 @@ std::vector<Move> Game::generatePseudoLegalMoves(unsigned int selectedCaseId) {
         {-1, -2, -3},
     };
 
-    // size_t file = FILE(selectedCaseId), rank = RANK(selectedCaseId);
+    if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
+        return;
+    }
+
     Piece &selectedPiece = this->board[selectedCaseId];
     unsigned int activeColorLastRank = (this->activeColor == Color::Black) ? 0 : 7;
-
-    /*if (selectedPiece.color != this->activeColor || selectedPiece.pieceType == PieceType::None) {
-        return pseudoLegalMoves;
-    }*/
 
     switch (selectedPiece.pieceType) {
         case PieceType::Pawn: {
@@ -423,14 +427,13 @@ std::vector<Move> Game::generatePseudoLegalMoves(unsigned int selectedCaseId) {
             unsigned int targetSquare20 = ::mailbox10x12[::mailbox8x8[selectedCaseId] + (20 * side)];
             unsigned int targetSquare11 = ::mailbox10x12[::mailbox8x8[selectedCaseId] + (11 * side)];
 
-            // TODO : handle promotion
-
             if (targetSquare9 != XX && // valid id
                 (this->enPassantTargetSquare == targetSquare9 || // en passant possible
                 (this->board[targetSquare9].pieceType != PieceType::None && 
                 this->board[targetSquare9].color != selectedPiece.color))) { // or opponent piece
                 unsigned int flags = M_CAPTURE;
                 Piece capturedPiece = this->board[targetSquare9];
+
                 if (this->enPassantTargetSquare == targetSquare9) { // en passant
                     capturedPiece.pieceType = PieceType::Pawn;
                     capturedPiece.color = getOppositeColor(this->activeColor);
@@ -453,6 +456,7 @@ std::vector<Move> Game::generatePseudoLegalMoves(unsigned int selectedCaseId) {
                 this->board[targetSquare11].color != selectedPiece.color))) { // or opponent piece
                 unsigned int flags = M_CAPTURE;
                 Piece capturedPiece = this->board[targetSquare11];
+
                 if (this->enPassantTargetSquare == targetSquare11) { // en passant
                     capturedPiece.pieceType = PieceType::Pawn;
                     capturedPiece.color = getOppositeColor(this->activeColor);
@@ -552,24 +556,16 @@ std::vector<Move> Game::generatePseudoLegalMoves(unsigned int selectedCaseId) {
             }
         }
     }
-
-    return pseudoLegalMoves;
 }
 
-std::vector<Move> Game::generateAllPseudoLegalMoves() {
-    std::vector<Move> pseudoLegalMoves;
-
+void Game::generateAllPseudoLegalMoves(std::vector<Move> &pseudoLegalMoves) {
     for (unsigned int caseId = 0; caseId < 64; caseId++) {
         if (this->board[caseId].color != this->activeColor || this->board[caseId].pieceType == PieceType::None) {
             continue;
         }
 
-        std::vector<Move> currentPseudoLegalMoves = this->generatePseudoLegalMoves(caseId);
-
-        pseudoLegalMoves.insert(pseudoLegalMoves.end(), currentPseudoLegalMoves.begin(), currentPseudoLegalMoves.end());
+        this->generatePseudoLegalMoves(pseudoLegalMoves, caseId);
     }
-    
-    return pseudoLegalMoves;
 }
 
 bool Game::isAttackedBy(unsigned int squareId, Color color) {
@@ -634,8 +630,10 @@ void Game::generateLegalMoves(std::vector<Move> &legalMoves, unsigned int select
         return;
     }
 
-    std::vector<Move> pseudoLegalMoves = this->generatePseudoLegalMoves(selectedCaseId);
+    std::vector<Move> pseudoLegalMoves;
     unsigned int kingSquare = this->getKingSquare(this->activeColor);
+
+    this->generatePseudoLegalMoves(pseudoLegalMoves, selectedCaseId);
 
     for (Move move : pseudoLegalMoves) {
         if (capturesOnly && !move.isCapture()) {
@@ -932,6 +930,10 @@ int Game::evaluate() {
     } else {
         return whiteScore - blackScore;
     }
+}
+
+std::vector<bool> Game::getCastlingRights(Color color) {
+    return this->castle[color];
 }
 
 unsigned int Game::getEnPassantTargetSquare() {
