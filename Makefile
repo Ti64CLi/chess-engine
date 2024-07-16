@@ -20,7 +20,7 @@ ENGINESRCS = $(wildcard src/engine/*.cpp)
 SRCS = $(wildcard src/*.cpp)
 OBJS = $(patsubst %.cpp, %.o, $(ENGINESRCS))
 OBJS += $(patsubst %.cpp, %.o, $(SRCS))
-BINDIR = .
+BINDIR = bin
 EXE = chess
 
 .PHONY: all

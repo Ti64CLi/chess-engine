@@ -18,7 +18,7 @@ OBJS = $(patsubst %.cpp, %.o, $(ENGINESRCS))
 OBJS += $(patsubst %.cpp, %.o, $(TESTS))
 EXES = $(patsubst %.cpp, %, $(TESTS))
 EXESCLEAN = $(addsuffix .clean, $(EXES))
-BINDIR = ..
+BINDIR = ../bin
 
 .PHONY: all clean $(EXESCLEAN)
 all: $(EXES)
