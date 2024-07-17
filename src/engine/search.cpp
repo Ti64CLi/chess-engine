@@ -122,12 +122,11 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
         if (evaluation >= bestMoveValuation.second) {
             bestMoveValuation.second = evaluation;
             bestMoveValuation.first = currentMove;
-
-
-            alpha = std::max(alpha, evaluation);
         }
 
-        if (evaluation >= beta) {
+        alpha = std::max(alpha, evaluation);
+
+        if (alpha >= beta) {
             break;
         }
     }
