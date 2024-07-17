@@ -115,6 +115,10 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
         int evaluation = -alphabeta(game, depth - 1, -beta, -alpha, moveCount, orderMoves);
         game.undoMove(currentMove, savedState);
 
+        if (evaluation >= MAX_SCORE - 256) { // to find and force check mate move
+            evaluation--;
+        }
+
         if (evaluation >= bestMoveValuation.second) {
             bestMoveValuation.second = evaluation;
             bestMoveValuation.first = currentMove;
@@ -167,6 +171,10 @@ MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCo
         engine::MoveSaveState savedState = game.doMove(currentMove);
         int moveScore = -alphabeta(game, depth - 1, -32000, 32000, moveCount, orderMoves);
         game.undoMove(currentMove, savedState);
+
+        if (moveScore >= MAX_SCORE - 256) {
+            moveScore--;
+        }
 
         // std::cout << moveScore << "/ best = " << bestMoveValuation.second << ")" << std::endl;
 
