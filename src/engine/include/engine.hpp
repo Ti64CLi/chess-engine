@@ -94,6 +94,7 @@ struct MoveSaveState {
 class Game {
     private:
         std::vector<Piece> board;
+        Zobrist zobristKeys;
         Key hash;
         //std::unordered_map<Color, std::vector<unsigned int>> attacks;
         // std::vector<Move> legalMoves;
@@ -109,7 +110,6 @@ class Game {
 
     public:
         Game();
-        Game(Game &game);
         Game(const std::string fen);
 
         int loadPosition(const std::string fen);
@@ -137,7 +137,7 @@ class Game {
 
         int evaluate();
 
-        Key getHash();
+        Key &getHash();
         std::vector<bool> getCastlingRights(Color color);
         unsigned int getEnPassantTargetSquare();
         unsigned int getKingSquare(Color color);
