@@ -422,7 +422,9 @@ int main() {
         } else if (splitCmd[0] == "exit") {
             break;
         } else if (splitCmd[0] == "hash") {
-            std::cout << "Position hash : " << game.getHash() << std::endl;
+            std::cout << "Position hash : " << game.getHash() << "\n" << std::endl;
+        } else if (splitCmd[0] == "eval") {
+            std::cout << "Position evaluation : " << game.evaluate() << std::endl;
         } else if (splitCmd[0] == "help") {
             std::cout << "Available commands :\n";
             std::cout << "\tposition [<fen string>] : show current FEN (or load a position if provided)\n";
@@ -433,10 +435,13 @@ int main() {
             std::cout << "\tsearch [<max depth>] : search the best move (<max depth> default is " << SEARCH_DEPTH << ")\n";
             std::cout << "\tperft [divide] [<max depth>] [infos] : execute perft(<max depth>) with [divide] or additional [infos] (<max depth> default is " << 0 << ")\n";
             std::cout << "\tperft_legal [divide] [<max depth>] [infos] : execute perft_legal(<max depth>) with [divide] or additional [infos] (<max depth> default is " << 0 << ")\n";
-            std::cout << "\t\t\tThe difference between perft and perft_legal is that perft_legal generate legal moves\n";
-            std::cout << "\t\t\twhich can be expensive since to check if a move is legal, the engine do the move,\n";
-            std::cout << "\t\t\tthen check if it lefts the king in check, and then undo the move, which adds a second\n";
-            std::cout << "\t\t\tlayer of do/undo\n" << std::endl;
+            std::cout << "\t\t\t\t\tThe difference between perft and perft_legal is that perft_legal generate legal moves\n";
+            std::cout << "\t\t\t\t\twhich can be expensive since to check if a move is legal, the engine do the move,\n";
+            std::cout << "\t\t\t\t\tthen check if it lefts the king in check, and then undo the move, which adds a second\n";
+            std::cout << "\t\t\t\t\tlayer of do/undo\n";
+            std::cout << "\thash : display hash of current position\n";
+            std::cout << "\teval : display evaluation of current position\n";
+            std::cout << std::endl;
         }
     }
 
