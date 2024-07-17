@@ -37,6 +37,7 @@ enum PieceType {
     Queen,
     King,
     Invalid,
+    PTNumber = 6,
 };
 
 enum Color {
@@ -135,6 +136,7 @@ class Game {
         void updateIrreversibles(Move &move);
         void switchActiveColor();
 
+        bool isEndGame();
         int evaluate();
 
         Key &getHash();
