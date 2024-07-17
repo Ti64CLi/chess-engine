@@ -1,6 +1,10 @@
 #include "include/search.hpp"
 #include "include/engine.hpp"
+#include "include/transpositiontable.hpp"
+#include <algorithm>
 #include <vector>
+
+static engine::TTable ttable;
 
 namespace engine {
 
@@ -55,9 +59,27 @@ int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount
     return alpha;
 }
 
-int negaMax(engine::Game &game, unsigned int depth, int alpha, int beta, unsigned long long &moveCount, bool orderMoves) {
+int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsigned long long &moveCount, bool orderMoves) {
     if (depth == 0) {
         return quiesceSearch(game, alpha, beta, moveCount, orderMoves);
+    }
+
+    int originalAlpha = alpha;
+
+    TTEntry entry = ::ttable.getEntry(game.getHash());
+
+    if (game.getHash() == entry.hash && entry.depth >= depth) {
+        if (entry.entryType == TTEntryType::Exact) {
+            return entry.valuation;
+        } else if (entry.entryType == TTEntryType::Lower) {
+            alpha = std::max(alpha, entry.valuation);
+        } else if (entry.entryType == TTEntryType::Upper) {
+            beta = std::min(beta, entry.valuation);
+        }
+
+        if (alpha >= beta) {
+            return entry.valuation;
+        }
     }
 
     std::vector<Move> legalMoves;
@@ -78,6 +100,8 @@ int negaMax(engine::Game &game, unsigned int depth, int alpha, int beta, unsigne
         game.orderMoves(legalMoves, orderedIndices);
     }
 
+    MoveValuation bestMoveValuation = {Move(), MIN_SCORE};
+
     for (unsigned int i  = 0; i < legalMoves.size(); i++) {
         Move &currentMove = legalMoves[i];
 
@@ -88,17 +112,25 @@ int negaMax(engine::Game &game, unsigned int depth, int alpha, int beta, unsigne
         }
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int evaluation = -negaMax(game, depth - 1, -beta, -alpha, moveCount, orderMoves);
+        int evaluation = -alphabeta(game, depth - 1, -beta, -alpha, moveCount, orderMoves);
         game.undoMove(currentMove, savedState);
 
-        if (evaluation >= beta) {
-            return beta;
+        if (evaluation >= bestMoveValuation.second) {
+            bestMoveValuation.second = evaluation;
+            bestMoveValuation.first = currentMove;
+
+
+            alpha = std::max(alpha, evaluation);
         }
 
-        alpha = std::max(alpha, evaluation);
+        if (evaluation >= beta) {
+            break;
+        }
     }
 
-    return alpha;
+    ::ttable.addEntry(game.getHash(), bestMoveValuation.first, depth, bestMoveValuation.second, originalAlpha, beta);
+
+    return bestMoveValuation.second;
 }
 
 MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCount, bool orderMoves) {
@@ -133,7 +165,7 @@ MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCo
         // std::cout << "Current move evaluated : " << utils::caseNameFromId(currentMove.getOriginSquare()) << utils::caseNameFromId(currentMove.getTargetSquare()) << " (valuation = ";
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int moveScore = -negaMax(game, depth - 1, -32000, 32000, moveCount, orderMoves);
+        int moveScore = -alphabeta(game, depth - 1, -32000, 32000, moveCount, orderMoves);
         game.undoMove(currentMove, savedState);
 
         // std::cout << moveScore << "/ best = " << bestMoveValuation.second << ")" << std::endl;
