@@ -3,20 +3,24 @@
 
 namespace engine {
 
-bool Zobrist::initialized = false;
 
 void Zobrist::init() {
-    if (Zobrist::initialized) {
+    if (this->initialized) {
         return;
     }
 
     std::mt19937_64 mt;
 
     for (unsigned int i = 0; i < 781; i++) {
-        Zobrist::keys[i] = mt();
+        this->keys[i] = mt();
     }
 
-    Zobrist::initialized = true;
+    this->initialized = true;
+
+}
+
+Key Zobrist::getKey(unsigned int offset) {
+    return this->keys[offset];
 }
 
 } // namespace engine

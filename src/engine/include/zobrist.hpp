@@ -12,12 +12,14 @@ class Zobrist {
         // then castling rights : 4
         // then file for valid en passant square = 8
         // Total = 768 + 1 + 4 + 8 = 781
-        static bool initialized;
+        bool initialized;
+        Key keys[781];
     
     public:
-        static Key keys[781];
-
-        static void init();
+        Zobrist() = default;
+        
+        void init();
+        Key getKey(unsigned int);
 };
 
 } // namespace engine
