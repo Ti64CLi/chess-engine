@@ -1112,7 +1112,7 @@ int Game::evaluate() {
         {PieceType::King, kingMiddleGame},
     };
 
-    static std::unordered_map<PieceType, const int *> positionbonusEndGame = {
+    static std::unordered_map<PieceType, const int *> positionBonusEndGame = {
         {PieceType::Pawn, pawnEndGame},
         {PieceType::Bishop, bishopEndGame},
         {PieceType::Knight, knightEndGame},
@@ -1134,7 +1134,8 @@ int Game::evaluate() {
         {Color::Black, {0, 0}},
         {Color::White, {0, 0}},
     };
-    unsigned int phase = totalPhase;
+    
+    int phase = totalPhase;
 
     for (size_t rank = 0; rank < 8; rank++) {
         for (size_t file = 0; file < 8; file++) {
@@ -1147,12 +1148,12 @@ int Game::evaluate() {
             }
 
             if (piece.pieceType != PieceType::None) {
-                totalPhase -= piecePhase[piece.pieceType - 1];
+                phase -= piecePhase[piece.pieceType - 1];
 
                 positionScore[piece.color].first += ::pieceTypeValue[piece.pieceType].first + // opening value
                                                     positionBonusMiddleGame[piece.pieceType][ID(file, relativeRank)];
                 positionScore[piece.color].second += ::pieceTypeValue[piece.pieceType].second + // endgame value
-                                                    positionbonusEndGame[piece.pieceType][ID(file, relativeRank)];
+                                                    positionBonusEndGame[piece.pieceType][ID(file, relativeRank)];
                     
             }
         }
@@ -1168,7 +1169,17 @@ int Game::evaluate() {
         endgameScore = -endgameScore;
     }
 
-    return ((openingScore * (256 - phase)) + (endgameScore * phase)) / 256;
+    int score = ((openingScore * (256 - phase)) + (endgameScore * phase)) / 256;
+
+    /*std::cout << "Current evaluation (phase = " << phase << "/" << totalPhase << ") : " << score << "\n";
+    std::cout << "\t\tBlack | White:\n"
+                 "\topening : " << positionScore[Color::Black].first << " | " << positionScore[Color::White].first;
+    std::cout << "\n\tending : " << positionScore[Color::Black].second << " | " << positionScore[Color::White].second;
+    std::cout << "\nOpening score : " << openingScore << " => " << (openingScore * (256 - phase)) << "\n";
+    std::cout << "Endgame score : " << endgameScore << " => " << (endgameScore * phase) << "\n";
+    std::cout << std::endl;*/
+
+    return score;
 }
 
 Key &Game::getHash() {
