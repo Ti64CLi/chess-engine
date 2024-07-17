@@ -775,10 +775,14 @@ MoveSaveState Game::doMove(Move &move) {
 
     this->switchActiveColor();
 
+    this->update_hash(move, savedState);
+
     return savedState;
 }
 
 void Game::undoMove(Move &move, MoveSaveState savedState) {
+    this->update_hash(move, savedState);
+
     this->switchActiveColor();
     this->restoreState(savedState);
 
@@ -812,6 +816,148 @@ void Game::undoMove(Move &move, MoveSaveState savedState) {
         this->board[::castlingRookSquareIds[this->activeColor][castlingSide].second] = {PieceType::None, Color::Black}; // empty old rook position
     }
 }
+
+void Game::generate_hash() {
+    this->hash = 0;
+
+    for (unsigned int square = 0; square < 64; square++) {
+        Piece &piece = this->getPiece(square);
+
+        this->hash^= Zobrist::keys[piece.color * 384 + (piece.pieceType - PieceType::Pawn) * 64 + square];
+    }
+
+    if (this->getActiveColor() == Color::Black) {
+        this->hash^= Zobrist::keys[768];
+    }
+
+    std::vector<bool> blackCastlingRights = this->getCastlingRights(Color::Black);
+    std::vector<bool> whiteCastlingRights = this->getCastlingRights(Color::White);
+    for (unsigned int castlingSide = 0; castlingSide < 2; castlingSide++) {
+        if (blackCastlingRights[castlingSide]) {
+            this->hash^= Zobrist::keys[769 + castlingSide];
+        }
+        if (whiteCastlingRights[castlingSide]) {
+            this->hash^= Zobrist::keys[771 + castlingSide];
+        }
+    }
+
+    unsigned int enPassantTargetSquare = this->getEnPassantTargetSquare();
+
+    if (enPassantTargetSquare < 64) {
+        this->hash^= Zobrist::keys[773 + (enPassantTargetSquare % 8)];
+    }
+}
+
+void Game::update_hash(Move &move, MoveSaveState &savedState) {
+    Piece movedPiece = this->getPiece(move.getTargetSquare());
+    PieceType promotedPieceType = movedPiece.pieceType;
+    Piece capturedPiece = move.getCapturedPiece();
+    unsigned int capturedPieceSquare = move.getTargetSquare();
+
+    if (move.isPromotion()) {
+        movedPiece.pieceType = PieceType::Pawn;
+    }
+
+    this->hash ^= Zobrist::keys[movedPiece.color * 384 + (movedPiece.pieceType - PieceType::Pawn) * 64 + move.getOriginSquare()]; // Remove piece from origin square
+    this->hash ^= Zobrist::keys[movedPiece.color * 384 + (promotedPieceType - PieceType::Pawn) * 64 + move.getTargetSquare()]; // put new piece on target square
+
+    if (move.isCapture()) {
+        if (capturedPieceSquare == savedState.enPassantTargetSquare) { // take care of en passant offset
+            capturedPieceSquare += movedPiece.color == Color::Black ? 8 : -8;
+        }
+
+        this->hash ^= Zobrist::keys[capturedPiece.color * 384 + (capturedPiece.pieceType - PieceType::Pawn) * 64 + capturedPieceSquare]; // remove captured piece
+    }
+
+    if (move.isCastling()) {
+        std::pair<unsigned int, unsigned int> rookSquares = ::castlingRookSquareIds[movedPiece.color][move.getCastlingSide()];
+
+        this->hash ^= Zobrist::keys[movedPiece.color * 384 + (PieceType::Rook - PieceType::Pawn) * 64 + rookSquares.first]; // remove rook from castle origin square
+        this->hash ^= Zobrist::keys[movedPiece.color * 384 + (PieceType::Rook - PieceType::Pawn) * 64 + rookSquares.second]; // put rook on castle target square
+    }
+
+    // handle castling rights
+    std::vector<bool> previousBlackCastlingRights = savedState.castle[Color::Black];
+    std::vector<bool> previousWhiteCastlingRights = savedState.castle[Color::White];
+    std::vector<bool> blackCastlingRights = this->getCastlingRights(Color::Black);
+    std::vector<bool> whiteCastlingRights = this->getCastlingRights(Color::White);
+
+    for (unsigned int castlingSide = 0; castlingSide < 2; castlingSide++) {
+        if (blackCastlingRights[castlingSide] != previousBlackCastlingRights[castlingSide]) {
+            this->hash ^= Zobrist::keys[769 + castlingSide];
+        }
+        if (whiteCastlingRights[castlingSide] != previousWhiteCastlingRights[castlingSide]) {
+            this->hash ^= Zobrist::keys[771 + castlingSide];
+        }
+    }
+
+    this->hash ^= Zobrist::keys[768]; // change color side
+
+    // handle en passant
+    if (savedState.enPassantTargetSquare < 64) {
+        this->hash ^= Zobrist::keys[773 + (savedState.enPassantTargetSquare % 8)];
+    }
+
+    if (this->getEnPassantTargetSquare() < 64) {
+        this->hash ^= Zobrist::keys[773 + (this->getEnPassantTargetSquare() % 8)];
+    }
+}
+
+// not needed since XOR is it's own inverse
+/*void Game::hash_undo_move(Move &move, MoveSaveState &savedState) {
+    Piece movedPiece = this->getPiece(move.getTargetSquare());
+    Piece capturedPiece = move.getCapturedPiece();
+    unsigned int capturedPieceSquare = move.getTargetSquare();
+
+    this->hash ^= Zobrist::keys[movedPiece.color * 384 + (movedPiece.pieceType - PieceType::Pawn) * 64 + move.getTargetSquare()]; // remove piece on target square
+
+    if (move.isPromotion()) {
+        movedPiece.pieceType = PieceType::Pawn;
+    }
+
+    this->hash ^= Zobrist::keys[movedPiece.color * 384 + (movedPiece.pieceType - PieceType::Pawn) * 64 + move.getOriginSquare()]; // put piece back on origin square
+
+    if (move.isCapture()) {
+        if (move.getTargetSquare() == savedState.enPassantTargetSquare) {
+            capturedPieceSquare = movedPiece.color == Color::Black ? 8 : -8;
+        }
+
+        this->hash ^= Zobrist::keys[capturedPiece.color * 384 + (capturedPiece.pieceType - PieceType::Pawn) * 64 + capturedPieceSquare]; // put captured piece back
+    }
+
+    if (move.isCastling()) {
+        std::pair<unsigned int, unsigned int> rookSquares = ::castlingRookSquareIds[movedPiece.color][move.getCastlingSide()];
+
+        this->hash ^= Zobrist::keys[movedPiece.color * 384 + (PieceType::Rook - PieceType::Pawn) * 64 + rookSquares.second]; // remove rook from castle target square
+        this->hash ^= Zobrist::keys[movedPiece.color * 384 + (PieceType::Rook - PieceType::Pawn) * 64 + rookSquares.first]; // put rook on castle origin square back
+    }
+
+    // handle castling rights
+    std::vector<bool> previousBlackCastlingRights = savedState.castle[Color::Black];
+    std::vector<bool> previousWhiteCastlingRights = savedState.castle[Color::White];
+    std::vector<bool> blackCastlingRights = this->getCastlingRights(Color::Black);
+    std::vector<bool> whiteCastlingRights = this->getCastlingRights(Color::White);
+
+    for (unsigned int castlingSide = 0; castlingSide < 2; castlingSide++) {
+        if (blackCastlingRights[castlingSide] != previousBlackCastlingRights[castlingSide]) {
+            this->hash ^= Zobrist::keys[769 + castlingSide];
+        }
+        if (whiteCastlingRights[castlingSide] != previousWhiteCastlingRights[castlingSide]) {
+            this->hash ^= Zobrist::keys[771 + castlingSide];
+        }
+    }
+
+    this->hash ^= Zobrist::keys[768]; // change color side
+
+    // handle en passant
+    if (savedState.enPassantTargetSquare < 64) {
+        this->hash ^= Zobrist::keys[773 + (savedState.enPassantTargetSquare % 8)];
+    }
+
+    if (this->getEnPassantTargetSquare() < 64) {
+        this->hash ^= Zobrist::keys[773 + (this->getEnPassantTargetSquare() % 8)];
+    }
+}*/
 
 void Game::switchActiveColor() {
     if (this->activeColor == Color::Black) { // next player
@@ -930,6 +1076,10 @@ int Game::evaluate() {
     } else {
         return whiteScore - blackScore;
     }
+}
+
+Key Game::getHash() {
+    return this->hash;
 }
 
 std::vector<bool> Game::getCastlingRights(Color color) {

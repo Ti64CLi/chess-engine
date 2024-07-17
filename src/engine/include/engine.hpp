@@ -1,6 +1,7 @@
 #ifndef __ENGINE_HPP__
 #define __ENGINE_HPP__
 
+#include "zobrist.hpp"
 #include <unordered_map>
 #include <vector>
 #include <string>
@@ -93,6 +94,7 @@ struct MoveSaveState {
 class Game {
     private:
         std::vector<Piece> board;
+        Key hash;
         //std::unordered_map<Color, std::vector<unsigned int>> attacks;
         // std::vector<Move> legalMoves;
 
@@ -111,6 +113,7 @@ class Game {
         Game(const std::string fen);
 
         int loadPosition(const std::string fen);
+        void generate_hash();
 
         MoveSaveState saveState();
         void restoreState(MoveSaveState savedState);
@@ -125,11 +128,16 @@ class Game {
 
         MoveSaveState doMove(Move &move);
         void undoMove(Move &move, MoveSaveState savedState);
+
+        void update_hash(Move &move, MoveSaveState &savedState);
+        // void hash_undo_move(Move &move, MoveSaveState &savedState);
+
         void updateIrreversibles(Move &move);
         void switchActiveColor();
 
         int evaluate();
 
+        Key getHash();
         std::vector<bool> getCastlingRights(Color color);
         unsigned int getEnPassantTargetSquare();
         unsigned int getKingSquare(Color color);
