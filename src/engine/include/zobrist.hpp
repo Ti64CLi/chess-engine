@@ -15,6 +15,7 @@ class Zobrist {
         // then file for valid en passant square = 8
         // Total = 768 + 1 + 4 + 8 = 781
         static Key keys[781];
+        static bool initialized;
     
     public:
         static void init();
