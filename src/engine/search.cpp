@@ -170,7 +170,7 @@ MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCo
 
         // std::cout << moveScore << "/ best = " << bestMoveValuation.second << ")" << std::endl;
 
-        if (moveScore > bestMoveValuation.second) {
+        if (moveScore >= bestMoveValuation.second) {
             bestMoveValuation = {currentMove, moveScore};
         }
     }
