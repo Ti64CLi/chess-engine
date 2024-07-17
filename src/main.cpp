@@ -27,6 +27,7 @@ int main() {
     engine::Game game(fen);
     std::vector<engine::MoveSaveState> savedStates;
     std::vector<engine::Move> savedMoves;
+    engine::MoveValuation bestMoveValuation = {engine::Move(), 0xc0ffee};
 
     ui::init(title, BOARD_RECTANGLE_WIDTH, 2.0f);
 
@@ -46,11 +47,17 @@ int main() {
         ui::renderCapturedPieces(1, game.getCapturedPieces(engine::Color::White));
         ui::show();
 
-        if (game.getActiveColor() == engine::Color::Black) { // AI turn
+        if (bestMoveValuation.second == 0xc0ffee) {
             unsigned long long moveCount = 0;
-            engine::MoveValuation bestMoveValuation = engine::negaMax(game, AI_DEPTH, moveCount);
-            std::cout << "Black AI move : " << game.move2str(bestMoveValuation.first) << " with valuation " << bestMoveValuation.second << std::endl;
-            std::cout << "Black AI move : " << utils::caseNameFromId(bestMoveValuation.first.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.first.getTargetSquare()) << std::endl;
+            bestMoveValuation = engine::negaMax(game, AI_DEPTH, moveCount, true);
+            std::cout << "AI move : " << game.move2str(bestMoveValuation.first) << " with valuation " << bestMoveValuation.second << std::endl;
+            std::cout << "AI move : " << utils::caseNameFromId(bestMoveValuation.first.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.first.getTargetSquare()) << std::endl;
+            if (abs(bestMoveValuation.second) >= engine::MAX_SCORE - 256) {
+                std::cout << "Check mate in " << (engine::MAX_SCORE - abs(bestMoveValuation.second)) << " full moves" << std::endl;
+            }
+        }
+        if (game.getActiveColor() == engine::Color::Black) { // AI turn
+            bestMoveValuation.second = 0xc0ffee;
 
             savedMoves.push_back(bestMoveValuation.first);
             savedStates.push_back(game.doMove(bestMoveValuation.first));
@@ -72,6 +79,7 @@ int main() {
 
                     for (engine::Move &move : moves) {
                         if (move.getTargetSquare() == selectedCaseId) {
+                            bestMoveValuation.second = 0xc0ffee;
                             selected = false;
 
                             if (move.isPromotion()) {
