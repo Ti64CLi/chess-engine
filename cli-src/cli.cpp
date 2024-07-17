@@ -421,6 +421,8 @@ int main() {
             }*/
         } else if (splitCmd[0] == "exit") {
             break;
+        } else if (splitCmd[0] == "hash") {
+            std::cout << "Position hash : " << game.getHash() << std::endl;
         } else if (splitCmd[0] == "help") {
             std::cout << "Available commands :\n";
             std::cout << "\tposition [<fen string>] : show current FEN (or load a position if provided)\n";
