@@ -207,10 +207,12 @@ PieceType Move::getPromotedPiece() {
 Game::Game() {
     this->zobristKeys.init();
     this->loadPosition(startPosition);
+    this->generate_hash();
 }
 Game::Game(const std::string fen) {
     this->zobristKeys.init();
     this->loadPosition(fen);
+    this->generate_hash();
 }
 
 int Game::loadPosition(const std::string fen) {
