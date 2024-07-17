@@ -817,8 +817,9 @@ void Game::generate_hash() {
 
     for (unsigned int square = 0; square < 64; square++) {
         Piece &piece = this->getPiece(square);
-
-        this->hash^= this->zobristKeys.getKey(piece.color * 384 + (piece.pieceType - PieceType::Pawn) * 64 + square);
+        if (piece.pieceType != PieceType::None) {
+            this->hash^= this->zobristKeys.getKey(piece.color * 384 + (piece.pieceType - PieceType::Pawn) * 64 + square);
+        }
     }
 
     if (this->getActiveColor() == Color::Black) {
