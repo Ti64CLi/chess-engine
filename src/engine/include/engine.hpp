@@ -1,6 +1,8 @@
 #ifndef __ENGINE_HPP__
 #define __ENGINE_HPP__
 
+#include "move.hpp"
+#include "piece.hpp"
 #include "zobrist.hpp"
 #include <unordered_map>
 #include <vector>
@@ -9,80 +11,44 @@
 
 #define ENGINE_VERSION "0.1"
 
-#define M_NONE      0
-#define M_ENPASSANT (1 << 0)
-#define M_CAPTURE   (1 << 1)
-#define M_CHECK     (1 << 2)
-#define M_CASTLE    (1 << 3)
-#define M_KINGSIDE  (1 << 4)
-#define M_QUEENSIDE (1 << 5)
-#define M_PROMOTION (1 << 6)
-#define M_PKNIGHT   (1 << 7)
-#define M_PROOK     (2 << 7)
-#define M_PQUEEN    (3 << 7)
-#define M_MATE      (1 << 9)
-
 #define XX 64
 
 namespace engine {
 
+static const unsigned int mailbox10x12[120] = {
+    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+    XX,  0,  1,  2,  3,  4,  5,  6,  7, XX,
+    XX,  8,  9, 10, 11, 12, 13, 14, 15, XX,
+    XX, 16, 17, 18, 19, 20, 21, 22, 23, XX,
+    XX, 24, 25, 26, 27, 28, 29, 30, 31, XX,
+    XX, 32, 33, 34, 35, 36, 37, 38, 39, XX,
+    XX, 40, 41, 42, 43, 44, 45, 46, 47, XX,
+    XX, 48, 49, 50, 51, 52, 53, 54, 55, XX,
+    XX, 56, 57, 58, 59, 60, 61, 62, 63, XX,
+    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
+};
+
+static const unsigned int mailbox8x8[64] = {
+    21, 22, 23, 24, 25, 26, 27, 28,
+    31, 32, 33, 34, 35, 36, 37, 38,
+    41, 42, 43, 44, 45, 46, 47, 48,
+    51, 52, 53, 54, 55, 56, 57, 58,
+    61, 62, 63, 64, 65, 66, 67, 68,
+    71, 72, 73, 74, 75, 76, 77, 78,
+    81, 82, 83, 84, 85, 86, 87, 88,
+    91, 92, 93, 94, 95, 96, 97, 98,
+};
+
+static std::unordered_map<engine::Color, std::vector<std::pair<unsigned int, unsigned int>>> castlingRookSquareIds = {
+    {engine::Color::Black, {{63, 61}, {56, 59}}},
+    {engine::Color::White, {{7, 5}, {0, 3}}},
+};
+
 const std::string startPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-enum PieceType {
-    None = 0,
-    Pawn,
-    Bishop,
-    Knight,
-    Rook,
-    Queen,
-    King,
-    Invalid,
-    PTNumber = 6,
-};
-
-enum Color {
-    Black,
-    White,
-};
-
-Color getOppositeColor(Color color);
-
-struct Piece {
-    PieceType pieceType;
-    Color color;
-};
-
 char pieceSymbol(Piece &piece);
-
-class Move {
-    private:
-        unsigned int originSquare;
-        unsigned int targetSquare;
-        unsigned int flags;
-        Piece capturedPiece;
-    
-    public:
-        Move();
-        Move(unsigned int originSquare, unsigned int targetSquare, unsigned int flags, Piece capturedPiece);
-
-        void setOriginSquare(unsigned int originSquare);
-        void setTargetSquare(unsigned int targetSquare);
-        void setCapturedPiece(Piece capturedPiece);
-        void setFlags(unsigned int flags);
-        void clearFlags(unsigned int flags);
-        unsigned int getOriginSquare();
-        unsigned int getTargetSquare();
-        Piece getCapturedPiece();
-        unsigned int getFlags();
-        bool isEnPassant();
-        bool isCapture();
-        bool isPromotion();
-        bool isCastling();
-        bool isCheck();
-        bool isMate();
-        unsigned int getCastlingSide();
-        PieceType getPromotedPiece();
-};
 
 struct MoveSaveState {
     std::unordered_map<Color, std::vector<bool>> castle;
@@ -116,16 +82,10 @@ class Game {
         int loadPosition(const std::string fen);
         void generate_hash();
 
+        bool isAttackedBy(unsigned int squareId, Color color);
+
         MoveSaveState saveState();
         void restoreState(MoveSaveState savedState);
-
-        bool isAttackedBy(unsigned int squareId, Color color);
-        void generatePseudoLegalMoves(std::vector<Move> &pseudoLegalMoves, unsigned int selectedCaseId);
-        void generateAllPseudoLegalMoves(std::vector<Move> &pseudoLegalMoves);
-        void generateLegalMoves(std::vector<Move> &legalMoves, unsigned int selectedCaseId, bool capturesOnly = false);
-        void generateAllLegalMoves(std::vector<Move> &legalMoves, bool capturesOnly = false);
-        int guessScore(Move &move);
-        void orderMoves(std::vector<Move> &moves, std::vector<unsigned int> &orderedIndices);
 
         MoveSaveState doMove(Move &move);
         void undoMove(Move &move, MoveSaveState savedState);
@@ -135,8 +95,6 @@ class Game {
 
         void updateIrreversibles(Move &move);
         void switchActiveColor();
-
-        bool isEndGame();
 
         Key &getHash();
         std::vector<bool> getCastlingRights(Color color);

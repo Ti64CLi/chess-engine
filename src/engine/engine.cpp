@@ -1,42 +1,10 @@
-#include "include/evaluation.hpp"
+#include "include/movesgeneration.hpp"
 #include "include/utils.hpp"
 #include "include/engine.hpp"
-#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <unordered_map>
-
-static const unsigned int mailbox10x12[120] = {
-    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
-    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
-    XX,  0,  1,  2,  3,  4,  5,  6,  7, XX,
-    XX,  8,  9, 10, 11, 12, 13, 14, 15, XX,
-    XX, 16, 17, 18, 19, 20, 21, 22, 23, XX,
-    XX, 24, 25, 26, 27, 28, 29, 30, 31, XX,
-    XX, 32, 33, 34, 35, 36, 37, 38, 39, XX,
-    XX, 40, 41, 42, 43, 44, 45, 46, 47, XX,
-    XX, 48, 49, 50, 51, 52, 53, 54, 55, XX,
-    XX, 56, 57, 58, 59, 60, 61, 62, 63, XX,
-    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
-    XX, XX, XX, XX, XX, XX, XX, XX, XX, XX,
-};
-
-static const unsigned int mailbox8x8[64] = {
-    21, 22, 23, 24, 25, 26, 27, 28,
-    31, 32, 33, 34, 35, 36, 37, 38,
-    41, 42, 43, 44, 45, 46, 47, 48,
-    51, 52, 53, 54, 55, 56, 57, 58,
-    61, 62, 63, 64, 65, 66, 67, 68,
-    71, 72, 73, 74, 75, 76, 77, 78,
-    81, 82, 83, 84, 85, 86, 87, 88,
-    91, 92, 93, 94, 95, 96, 97, 98,
-};
-
-static std::unordered_map<engine::Color, std::vector<std::pair<unsigned int, unsigned int>>> castlingRookSquareIds = {
-    {engine::Color::Black, {{63, 61}, {56, 59}}},
-    {engine::Color::White, {{7, 5}, {0, 3}}},
-};
 
 namespace engine {
 
@@ -94,106 +62,6 @@ char promotionSymbol(PieceType promotedPiece) {
         default:
             return 'Q';
     }
-}
-
-Color getOppositeColor(Color color) {
-    switch (color) {
-        case Color::Black:
-            return Color::White;
-        case Color::White:
-        default:
-            return Color::Black;
-    }
-}
-
-Move::Move() {
-    this->originSquare = 64;
-    this->targetSquare = 64;
-    this->flags = M_NONE;
-    this->capturedPiece = Piece();
-}
-
-/*Move::Move(const Move &move) : originSquare(move.originSquare),
-                               targetSquare(move.targetSquare),
-                               flags(move.flags),
-                               capturedPiece(move.capturedPiece) {}*/
-                               
-Move::Move(unsigned int originSquare, 
-           unsigned int targetSquare, 
-           unsigned int flags,
-           Piece capturedPiece) : originSquare(originSquare),
-                                 targetSquare(targetSquare),
-                                 flags(flags),
-                                 capturedPiece(capturedPiece) {}
-
-void Move::setOriginSquare(unsigned int originSquare) {
-    this->originSquare = originSquare;
-}
-
-void Move::setTargetSquare(unsigned int targetSquare) {
-    this->targetSquare = targetSquare;
-}
-
-void Move::setCapturedPiece(Piece capturedPiece) {
-    this->capturedPiece = capturedPiece;
-}
-
-unsigned int Move::getOriginSquare() {
-    return this->originSquare;
-}
-
-unsigned int Move::getTargetSquare() {
-    return this->targetSquare;
-}
-
-Piece Move::getCapturedPiece() {
-    return this->capturedPiece;
-}
-
-unsigned int Move::getFlags() {
-    return this->flags;
-}
-
-void Move::setFlags(unsigned int flags) {
-    this->flags |= flags;
-}
-
-void Move::clearFlags(unsigned int flags) {
-    this->flags &= ~flags;
-}
-
-bool Move::isEnPassant() {
-    return this->flags & M_ENPASSANT;
-}
-
-bool Move::isCapture() {
-    return this->flags & M_CAPTURE;
-}
-
-bool Move::isCheck() {
-    return this->flags & M_CHECK;
-}
-
-bool Move::isMate() {
-    return this->flags & M_MATE;
-}
-
-bool Move::isPromotion() {
-    return this->flags & M_PROMOTION;
-}
-
-bool Move::isCastling() {
-    return this->flags & M_CASTLE;
-}
-
-unsigned int Move::getCastlingSide() {
-    return (this->flags & M_QUEENSIDE) >> 5;
-}
-
-PieceType Move::getPromotedPiece() {
-    PieceType promotedPieceType = (PieceType)(PieceType::Bishop + ((this->flags & M_PQUEEN) >> 7));
-
-    return promotedPieceType;
 }
 
 Game::Game() {
@@ -357,6 +225,53 @@ int Game::loadPosition(const std::string fen) {
     return 0;
 }
 
+bool Game::isAttackedBy(unsigned int squareId, Color color) {
+    int pawnSide = (color == Color::Black) ? 1 : -1;
+    bool attacked = false;
+
+    for (const auto &currentPieceTypeOffsets : pieceTypeOffsets) {
+        if (attacked) {
+            break;
+        }
+
+        const auto &allowedOffsets = currentPieceTypeOffsets.second;
+
+        for (const auto &offset : allowedOffsets.first) { // test each direction
+            if (attacked) {
+                break;
+            }
+
+            int currentOffset = offset;
+
+            if (currentPieceTypeOffsets.first == PieceType::Pawn) {
+                currentOffset *= pawnSide;
+            }
+
+            for (unsigned int testedSquare = squareId;;) { // go in the current direction, starting from the selected square
+                testedSquare = mailbox10x12[mailbox8x8[testedSquare] + currentOffset]; // next square in the current direction
+
+                if (testedSquare == XX) { // got out of the board
+                    break;
+                }
+
+                Piece &currentTestedPiece = this->getPiece(testedSquare);
+
+                if (currentTestedPiece.pieceType == PieceType::None && allowedOffsets.second) { // can continue in this direction only if sliding piece
+                    continue;
+                }
+
+                if (currentTestedPiece.pieceType == currentPieceTypeOffsets.first && currentTestedPiece.color == color) { // opposing piece
+                    attacked = true;
+                }
+
+                break; // break anyway since there is a piece
+            }
+        }
+    }
+
+    return attacked;
+}
+
 MoveSaveState Game::saveState() {
     return {
         {
@@ -383,309 +298,6 @@ void Game::restoreState(MoveSaveState savedState) {
     this->kingSquare[Color::White] = savedState.kingSquare[Color::White];
 }
 
-void Game::generatePseudoLegalMoves(std::vector<Move> &pseudoLegalMoves, unsigned int selectedCaseId) {
-    static std::unordered_map<PieceType, std::pair<std::vector<int>, bool>> pieceTypeOffsets = {
-        {PieceType::Bishop, {{-11, -9, 9, 11}, true}},
-        {PieceType::Knight, {{-21, -19, -12, -8, 8, 12, 19, 21}, false}},
-        {PieceType::Rook, {{-10, -1, 1, 10}, true}},
-        {PieceType::Queen, {{-11, -10, -9, -1, 1, 9, 10, 11}, true}},
-        {PieceType::King, {{-11, -10, -9, -1, 1, 9, 10, 11}, false}},
-    };
-
-    static std::vector<std::vector<int>> castlingOffsets = {
-        {1, 2},
-        {-1, -2, -3},
-    };
-
-    if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-        return;
-    }
-
-    Piece &selectedPiece = this->board[selectedCaseId];
-    unsigned int activeColorLastRank = (this->activeColor == Color::Black) ? 0 : 7;
-
-    switch (selectedPiece.pieceType) {
-        case PieceType::Pawn: {
-            int side = (this->activeColor == Color::White) ? 1 : -1;
-            unsigned int targetSquare9 = ::mailbox10x12[::mailbox8x8[selectedCaseId] + (9 * side)];
-            unsigned int targetSquare10 = ::mailbox10x12[::mailbox8x8[selectedCaseId] + (10 * side)];
-            unsigned int targetSquare20 = ::mailbox10x12[::mailbox8x8[selectedCaseId] + (20 * side)];
-            unsigned int targetSquare11 = ::mailbox10x12[::mailbox8x8[selectedCaseId] + (11 * side)];
-
-            if (targetSquare9 != XX && // valid id
-                (this->enPassantTargetSquare == targetSquare9 || // en passant possible
-                (this->board[targetSquare9].pieceType != PieceType::None && 
-                this->board[targetSquare9].color != selectedPiece.color))) { // or opponent piece
-                unsigned int flags = M_CAPTURE;
-                Piece capturedPiece = this->board[targetSquare9];
-
-                if (this->enPassantTargetSquare == targetSquare9) { // en passant
-                    capturedPiece.pieceType = PieceType::Pawn;
-                    capturedPiece.color = getOppositeColor(this->activeColor);
-                }
-                
-                if (RANK(targetSquare9) == activeColorLastRank) {
-                    flags |= M_PROMOTION;
-
-                    for (unsigned int promotionFlag = 0; promotionFlag < 4; promotionFlag++) {
-                        pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare9, flags | (promotionFlag << 7), capturedPiece));
-                    }
-                } else {
-                    pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare9, flags, capturedPiece));
-                }
-            }
-
-            if (targetSquare11 != XX && // valid id
-                (this->enPassantTargetSquare == targetSquare11 || // en passant possible
-                (this->board[targetSquare11].pieceType != PieceType::None &&
-                this->board[targetSquare11].color != selectedPiece.color))) { // or opponent piece
-                unsigned int flags = M_CAPTURE;
-                Piece capturedPiece = this->board[targetSquare11];
-
-                if (this->enPassantTargetSquare == targetSquare11) { // en passant
-                    capturedPiece.pieceType = PieceType::Pawn;
-                    capturedPiece.color = getOppositeColor(this->activeColor);
-                }
-
-                if (RANK(targetSquare11) == activeColorLastRank) {
-                    flags |= M_PROMOTION;
-
-                    for (unsigned int promotionFlag = 0; promotionFlag < 4; promotionFlag++) {
-                        pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare11, flags | (promotionFlag << 7), capturedPiece));
-                    }
-                } else {
-                    pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare11, flags, capturedPiece));
-                }
-            }
-
-            if (targetSquare10 != XX && // valid id
-                this->board[targetSquare10].pieceType == PieceType::None) { // no piece on target square
-                if (RANK(targetSquare10) == activeColorLastRank) {
-                    unsigned int flags = M_PROMOTION;
-                
-                    for (unsigned int promotionFlag = 0; promotionFlag < 4; promotionFlag++) {
-                        pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare10, flags | (promotionFlag << 7), {PieceType::None, Color::Black}));
-                    }
-                } else {
-                    pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare10, M_NONE, {PieceType::None, Color::Black}));
-                }
-
-                if (targetSquare20 != XX && // valid id
-                    RANK(selectedCaseId) == ((unsigned int)(7 + side) % 7) && // second rank for each side
-                    this->board[targetSquare20].pieceType == PieceType::None) { // target square is empty
-                    pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare20, M_ENPASSANT, {PieceType::None, Color::Black}));
-                }
-            }
-
-            break;
-        }
-
-        case PieceType::Bishop:
-        case PieceType::Knight:
-        case PieceType::Rook:
-        case PieceType::Queen:
-        case PieceType::King: {
-            std::pair<std::vector<int>, bool> &currentPieceAllowedMoves = pieceTypeOffsets[selectedPiece.pieceType];
-            std::vector<int> &currentPieceOffsets = currentPieceAllowedMoves.first;
-
-            for (const int &offset : currentPieceOffsets) { // check all directions
-                for (unsigned int targetSquare = selectedCaseId;;) { // start from selected square
-                    targetSquare = ::mailbox10x12[::mailbox8x8[targetSquare] + offset]; // get next target square
-
-                    if (targetSquare == XX) { // outside of the board
-                        break;
-                    }
-
-                    Piece &targetSquarePiece = this->board[targetSquare];
-
-                    if (targetSquarePiece.pieceType != PieceType::None) { // blocked by a piece
-                        if (targetSquarePiece.color != this->activeColor) { // capture opponent piece
-                            pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare, M_CAPTURE, targetSquarePiece));
-                        }
-
-                        break; // can't continue in this direction
-                    }
-
-                    pseudoLegalMoves.push_back(Move(selectedCaseId, targetSquare, M_NONE, {PieceType::None, Color::Black}));
-
-                    if (!currentPieceAllowedMoves.second) { // can't slide
-                        break;
-                    }
-                }
-            }
-
-            break;
-        }
-
-        default:
-            break;
-    }
-
-    // check for castling
-    if (selectedPiece.pieceType == PieceType::King) {
-        for (size_t castlingSide = 0; castlingSide < 2; castlingSide++) { // check each side
-            bool possible = this->castle[this->activeColor][castlingSide] && !this->isAttackedBy(selectedCaseId, getOppositeColor(this->activeColor));
-
-            if (possible) {
-                for (const auto &offset : castlingOffsets[castlingSide]) {
-                    if (this->board[selectedCaseId + offset].pieceType != PieceType::None || (this->isAttackedBy(selectedCaseId + offset, getOppositeColor(this->activeColor)) && offset != -3)) {
-                        possible = false;
-
-                        break;
-                    }
-                }
-
-                if (possible) {
-                    pseudoLegalMoves.push_back(Move(selectedCaseId, selectedCaseId + castlingOffsets[castlingSide][0] * 2, M_CASTLE | (M_KINGSIDE << castlingSide), {PieceType::None, Color::Black}));
-                }
-            }
-        }
-    }
-}
-
-void Game::generateAllPseudoLegalMoves(std::vector<Move> &pseudoLegalMoves) {
-    for (unsigned int caseId = 0; caseId < 64; caseId++) {
-        if (this->board[caseId].color != this->activeColor || this->board[caseId].pieceType == PieceType::None) {
-            continue;
-        }
-
-        this->generatePseudoLegalMoves(pseudoLegalMoves, caseId);
-    }
-}
-
-bool Game::isAttackedBy(unsigned int squareId, Color color) {
-    int pawnSide = (color == Color::Black) ? 1 : -1;
-
-    static std::vector<std::pair<PieceType, std::pair<std::vector<int>, bool>>> pieceTypeOffsets = {
-        {PieceType::Pawn, {{9, 11}, false}},
-        {PieceType::Bishop, {{-11, -9, 9, 11}, true}},
-        {PieceType::Knight, {{-21, -19, -12, -8, 8, 12, 19, 21}, false}},
-        {PieceType::Rook, {{-10, -1, 1, 10}, true}},
-        {PieceType::Queen, {{-11, -10, -9, -1, 1, 9, 10, 11}, true}},
-        {PieceType::King, {{-11, -10, -9, -1, 1, 9, 10, 11}, false}},
-    };
-
-    bool attacked = false;
-
-    for (const auto &currentPieceTypeOffsets : pieceTypeOffsets) {
-        if (attacked) {
-            break;
-        }
-
-        const auto &allowedOffsets = currentPieceTypeOffsets.second;
-
-        for (const auto &offset : allowedOffsets.first) { // test each direction
-            if (attacked) {
-                break;
-            }
-
-            int currentOffset = offset;
-
-            if (currentPieceTypeOffsets.first == PieceType::Pawn) {
-                currentOffset *= pawnSide;
-            }
-
-            for (unsigned int testedSquare = squareId;;) { // go in the current direction, starting from the selected square
-                testedSquare = ::mailbox10x12[::mailbox8x8[testedSquare] + currentOffset]; // next square in the current direction
-
-                if (testedSquare == XX) { // got out of the board
-                    break;
-                }
-
-                Piece &currentTestedPiece = this->board[testedSquare];
-
-                if (currentTestedPiece.pieceType == PieceType::None && allowedOffsets.second) { // can continue in this direction only if sliding piece
-                    continue;
-                }
-
-                if (currentTestedPiece.pieceType == currentPieceTypeOffsets.first && currentTestedPiece.color == color) { // opposing piece
-                    attacked = true;
-                }
-
-                break; // break anyway since there is a piece
-            }
-        }
-    }
-
-    return attacked;
-}
-
-void Game::generateLegalMoves(std::vector<Move> &legalMoves, unsigned int selectedCaseId, bool capturesOnly) {
-    if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-        return;
-    }
-
-    std::vector<Move> pseudoLegalMoves;
-    unsigned int kingSquare = this->getKingSquare(this->activeColor);
-
-    this->generatePseudoLegalMoves(pseudoLegalMoves, selectedCaseId);
-
-    for (Move move : pseudoLegalMoves) {
-        if (capturesOnly && !move.isCapture()) {
-            continue;
-        }
-
-        unsigned int currentKingSquare = kingSquare;
-
-        if (move.getOriginSquare() == kingSquare) {
-            currentKingSquare = move.getTargetSquare();
-        }
-
-        MoveSaveState savedState = this->doMove(move);
-
-        if (!this->isAttackedBy(currentKingSquare, this->activeColor)) { // left our king in check ?
-            legalMoves.push_back(move);
-        }
-
-        this->undoMove(move, savedState);
-    }
-}
-
-void Game::generateAllLegalMoves(std::vector<Move> &legalMoves, bool capturesOnly) {
-    for (unsigned int selectedCaseId = 0; selectedCaseId < 64; selectedCaseId++) {
-        if (this->board[selectedCaseId].color != this->activeColor || this->board[selectedCaseId].pieceType == PieceType::None) {
-            continue;
-        }
-
-        this->generateLegalMoves(legalMoves, selectedCaseId, capturesOnly);
-    }
-}
-
-int Game::guessScore(Move &move) {
-    int guessedScore = 0;
-
-    PieceType movedPiece = this->board[move.getOriginSquare()].pieceType;
-    PieceType capturedPiece = move.getCapturedPiece().pieceType;
-
-    if (move.isCapture()) {
-        guessedScore += 10 * pieceTypeValue[capturedPiece].first - pieceTypeValue[movedPiece].first;
-    }
-
-    if (move.isPromotion()) {
-        guessedScore += pieceTypeValue[move.getPromotedPiece()].first;
-    }
-
-    if (this->isAttackedBy(move.getTargetSquare(), getOppositeColor(this->activeColor))) {
-        guessedScore -= pieceTypeValue[movedPiece].first;
-    }
-
-    return guessedScore;
-}
-
-void Game::orderMoves(std::vector<Move> &moves, std::vector<unsigned int> &orderedIndices) {
-    std::vector<Move> orderedMoves;
-    std::vector<int> guessedScores;
-
-    for (unsigned int i = 0; i < moves.size(); i++) {
-        orderedIndices.push_back(i);
-        guessedScores.push_back(this->guessScore(moves[i]));
-    }
-
-    std::sort(orderedIndices.begin(), orderedIndices.end(), [&](unsigned int &i, unsigned int &j) {
-        return guessedScores[i] > guessedScores[j];
-    });
-}
-
 MoveSaveState Game::doMove(Move &move) {
     MoveSaveState savedState = this->saveState(); // save current state
 
@@ -701,7 +313,7 @@ MoveSaveState Game::doMove(Move &move) {
     }
     if (selectedPiece.pieceType == PieceType::Rook) { // can't castle on the side of the rook
         for (size_t i = 0; i < 2; i++) {
-            if (move.getOriginSquare() == ::castlingRookSquareIds[selectedPiece.color][i].first) {
+            if (move.getOriginSquare() == castlingRookSquareIds[selectedPiece.color][i].first) {
                 this->castle[selectedPiece.color][i] = false;
             }
         }
@@ -716,7 +328,7 @@ MoveSaveState Game::doMove(Move &move) {
 
         if (targetSquarePiece.pieceType == PieceType::Rook) {
             for (size_t i = 0; i < 2; i++) {
-                if (move.getTargetSquare() == ::castlingRookSquareIds[targetSquarePiece.color][i].first) {
+                if (move.getTargetSquare() == castlingRookSquareIds[targetSquarePiece.color][i].first) {
                     this->castle[targetSquarePiece.color][i] = false;
                 }
             }
@@ -727,9 +339,9 @@ MoveSaveState Game::doMove(Move &move) {
 
     if (move.isCastling()) {
         unsigned int castlingSide = move.getCastlingSide();
-        unsigned int castlingOriginSquare = ::castlingRookSquareIds[this->activeColor][castlingSide].first;
+        unsigned int castlingOriginSquare = castlingRookSquareIds[this->activeColor][castlingSide].first;
 
-        this->board[::castlingRookSquareIds[this->activeColor][castlingSide].second] = this->board[castlingOriginSquare]; // move rook
+        this->board[castlingRookSquareIds[this->activeColor][castlingSide].second] = this->board[castlingOriginSquare]; // move rook
         this->board[castlingOriginSquare] = {PieceType::None, Color::Black}; // empty old rook position
         this->castle[this->activeColor] = {false, false};
     }
@@ -795,10 +407,10 @@ void Game::undoMove(Move &move, MoveSaveState savedState) {
 
     if (move.isCastling()) {
         unsigned int castlingSide = move.getCastlingSide();
-        unsigned int castlingOriginSquare = ::castlingRookSquareIds[this->activeColor][castlingSide].first;
+        unsigned int castlingOriginSquare = castlingRookSquareIds[this->activeColor][castlingSide].first;
 
-        this->board[castlingOriginSquare] = this->board[::castlingRookSquareIds[this->activeColor][castlingSide].second]; // move rook
-        this->board[::castlingRookSquareIds[this->activeColor][castlingSide].second] = {PieceType::None, Color::Black}; // empty old rook position
+        this->board[castlingOriginSquare] = this->board[castlingRookSquareIds[this->activeColor][castlingSide].second]; // move rook
+        this->board[castlingRookSquareIds[this->activeColor][castlingSide].second] = {PieceType::None, Color::Black}; // empty old rook position
     }
 }
 
@@ -856,7 +468,7 @@ void Game::update_hash(Move &move, MoveSaveState &savedState) {
     }
 
     if (move.isCastling()) {
-        std::pair<unsigned int, unsigned int> rookSquares = ::castlingRookSquareIds[movedPiece.color][move.getCastlingSide()];
+        std::pair<unsigned int, unsigned int> rookSquares = castlingRookSquareIds[movedPiece.color][move.getCastlingSide()];
 
         this->hash ^= this->zobristKeys.getKey(movedPiece.color * 384 + (PieceType::Rook - PieceType::Pawn) * 64 + rookSquares.first); // remove rook from castle origin square
         this->hash ^= this->zobristKeys.getKey(movedPiece.color * 384 + (PieceType::Rook - PieceType::Pawn) * 64 + rookSquares.second); // put rook on castle target square
@@ -1116,7 +728,7 @@ const std::string Game::move2str(Move &move) {
 Move Game::str2move(const std::string &move) {
     unsigned int originSquare = utils::idFromCaseName(move.substr(0, 2)), targetSquare = utils::idFromCaseName(move.substr(2));
     std::vector<Move> legalMoves;
-    this->generateLegalMoves(legalMoves, originSquare);
+    generateLegalMoves(*this, legalMoves, originSquare);
 
     for (Move &currentMove : legalMoves) {
         if (currentMove.getTargetSquare() == targetSquare) {
