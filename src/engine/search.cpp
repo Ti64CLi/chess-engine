@@ -1,6 +1,8 @@
 #include "include/search.hpp"
 #include "include/engine.hpp"
 #include "include/evaluation.hpp"
+#include "include/movesgeneration.hpp"
+#include "include/movesordering.hpp"
 #include "include/transpositiontable.hpp"
 #include <algorithm>
 #include <vector>
@@ -9,7 +11,7 @@ static engine::TTable ttable;
 
 namespace engine {
 
-int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount, bool orderMoves) {
+int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount, bool orderingMoves) {
     int stand_pat = evaluate(game);
 
     if (stand_pat >= beta) {
@@ -22,10 +24,10 @@ int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount
     std::vector<engine::Move> legalMoves;
     std::vector<unsigned int> orderedIndices;
 
-    game.generateAllLegalMoves(legalMoves, true);
+    generateAllLegalMoves(game, legalMoves, true);
 
-    if (orderMoves) {
-        game.orderMoves(legalMoves, orderedIndices);
+    if (orderingMoves) {
+        orderMoves(game, legalMoves, orderedIndices);
     }
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -33,12 +35,12 @@ int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount
 
         moveCount++;
 
-        if (orderMoves) {
+        if (orderingMoves) {
             currentMove = legalMoves[orderedIndices[i]];
         }
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int score = -quiesceSearch(game, -beta, -alpha, moveCount, orderMoves);
+        int score = -quiesceSearch(game, -beta, -alpha, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
 
         if (score >= beta) {
@@ -51,9 +53,9 @@ int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount
     return alpha;
 }
 
-int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsigned long long &moveCount, bool orderMoves) {
+int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsigned long long &moveCount, bool orderingMoves) {
     if (depth == 0) {
-        return quiesceSearch(game, alpha, beta, moveCount, orderMoves);
+        return quiesceSearch(game, alpha, beta, moveCount, orderingMoves);
     }
 
     int originalAlpha = alpha;
@@ -76,7 +78,7 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
 
     std::vector<Move> legalMoves;
 
-    game.generateAllLegalMoves(legalMoves);
+    generateAllLegalMoves(game, legalMoves);
 
     if (legalMoves.empty()) { // mate
         if (game.isAttackedBy(game.getKingSquare(game.getActiveColor()), engine::getOppositeColor(game.getActiveColor()))) { // checkmate
@@ -88,8 +90,8 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
 
     std::vector<unsigned int> orderedIndices;
 
-    if (orderMoves) {
-        game.orderMoves(legalMoves, orderedIndices);
+    if (orderingMoves) {
+        orderMoves(game, legalMoves, orderedIndices);
     }
 
     MoveValuation bestMoveValuation = {Move(), MIN_SCORE};
@@ -99,12 +101,12 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
 
         moveCount++;
 
-        if (orderMoves) {
+        if (orderingMoves) {
             currentMove = legalMoves[orderedIndices[i]];
         }
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int evaluation = -alphabeta(game, depth - 1, -beta, -alpha, moveCount, orderMoves);
+        int evaluation = -alphabeta(game, depth - 1, -beta, -alpha, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
 
         if (evaluation >= MAX_SCORE - 256) { // to find and force check mate move
@@ -128,11 +130,11 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
     return bestMoveValuation.second;
 }
 
-MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCount, bool orderMoves) {
+MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCount, bool orderingMoves) {
     MoveValuation bestMoveValuation = {Move(), MIN_SCORE};
     std::vector<Move> legalMoves;
 
-    game.generateAllLegalMoves(legalMoves);
+    generateAllLegalMoves(game, legalMoves);
 
     if (legalMoves.empty()) { // mate
         if (!game.isAttackedBy(game.getKingSquare(game.getActiveColor()), getOppositeColor(game.getActiveColor()))) { // stalemate
@@ -144,8 +146,8 @@ MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCo
 
     std::vector<unsigned int> orderedIndices;
 
-    if (orderMoves) {
-        game.orderMoves(legalMoves, orderedIndices);
+    if (orderingMoves) {
+        orderMoves(game, legalMoves, orderedIndices);
     }
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -153,14 +155,14 @@ MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCo
 
         moveCount++;
 
-        if (orderMoves) {
+        if (orderingMoves) {
             currentMove = legalMoves[orderedIndices[i]];
         }
 
         // std::cout << "Current move evaluated : " << utils::caseNameFromId(currentMove.getOriginSquare()) << utils::caseNameFromId(currentMove.getTargetSquare()) << " (valuation = ";
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int moveScore = -alphabeta(game, depth - 1, -32000, 32000, moveCount, orderMoves);
+        int moveScore = -alphabeta(game, depth - 1, -32000, 32000, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
 
         if (moveScore >= MAX_SCORE - 256) {
