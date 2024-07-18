@@ -398,7 +398,7 @@ int main() {
                 unsigned long long moveCount = 0;
                 auto start = std::chrono::high_resolution_clock::now();
 
-                engine::MoveValuation bestValuation = engine::negaMax(game, searchDepth, moveCount, true);
+                engine::MoveValuation bestValuation = engine::negaMax(game, searchDepth, searchDepth, moveCount, true);
 
                 auto end = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
