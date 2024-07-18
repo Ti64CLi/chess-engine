@@ -1,5 +1,6 @@
 #include "../src/engine/include/engine.hpp"
 #include "../src/engine/include/evaluation.hpp"
+#include "../src/engine/include/movesgeneration.hpp"
 #include "../src/engine/include/search.hpp"
 #include "../src/engine/include/utils.hpp"
 #include <algorithm>
@@ -21,7 +22,7 @@ u64 perft(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::ve
     u64 nodes = 0;
     std::vector<engine::Move> pseudoLegalMoves;
 
-    game.generateAllPseudoLegalMoves(pseudoLegalMoves);
+    generateAllPseudoLegalMoves(game, pseudoLegalMoves);
 
     for (engine::Move &move : pseudoLegalMoves) {
         u64 currentLeafs = 0;
@@ -84,7 +85,7 @@ u64 perft_legal(engine::Game &game, unsigned int maxDepth, unsigned int depth, s
     u64 nodes = 0;
     std::vector<engine::Move> legalMoves;
 
-    game.generateAllLegalMoves(legalMoves);
+    generateAllLegalMoves(game, legalMoves);
 
     for (engine::Move &move : legalMoves) {
         u64 currentLeafs = 0;
@@ -274,7 +275,7 @@ int main() {
                 std::cout << "Invalid square name : " << splitCmd[1] << "\n";
             } else {
                 std::vector<engine::Move> legalMoves;
-                game.generateLegalMoves(legalMoves, originSquare);
+                generateLegalMoves(game, legalMoves, originSquare);
 
                 for (engine::Move &move : legalMoves) {
                     std::cout << move2str(move) << std::endl;

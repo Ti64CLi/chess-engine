@@ -1,5 +1,6 @@
 #include "../src/engine/include/engine.hpp"
 #include "../src/engine/include/utils.hpp"
+#include "../src/engine/include/movesgeneration.hpp"
 #include <iostream>
 
 typedef unsigned long long u64;
@@ -12,7 +13,7 @@ u64 perft(engine::Game &game, unsigned int maxDepth, unsigned int depth, std::ve
     u64 nodes = 0;
     std::vector<engine::Move> pseudoLegalMoves;
 
-    game.generateAllPseudoLegalMoves(pseudoLegalMoves);
+    generateAllPseudoLegalMoves(game, pseudoLegalMoves);
 
     for (engine::Move &move : pseudoLegalMoves) {
         u64 currentLeafs = 0;
@@ -74,7 +75,7 @@ u64 perft_unopt(engine::Game &game, unsigned int maxDepth, unsigned int depth, s
     u64 nodes = 0;
     std::vector<engine::Move> legalMoves;
 
-    game.generateAllLegalMoves(legalMoves);
+    generateAllLegalMoves(game, legalMoves);
 
     for (engine::Move &move : legalMoves) {
         u64 currentLeafs = 0;

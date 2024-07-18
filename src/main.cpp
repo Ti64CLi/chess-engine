@@ -3,6 +3,7 @@
 #include "include/ui.hpp"
 #include "engine/include/search.hpp"
 #include "engine/include/engine.hpp"
+#include "engine/include/movesgeneration.hpp"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -100,7 +101,7 @@ int main() {
                     }
 
                     if (selected) {
-                        game.generateLegalMoves(moves, selectedCaseId);
+                        generateLegalMoves(game, moves, selectedCaseId);
                         std::cout << "Moves allowed :" << std::endl;
 
                         for (engine::Move &move : moves) {
