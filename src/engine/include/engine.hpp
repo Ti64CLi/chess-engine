@@ -137,7 +137,6 @@ class Game {
         void switchActiveColor();
 
         bool isEndGame();
-        int evaluate();
 
         Key &getHash();
         std::vector<bool> getCastlingRights(Color color);
