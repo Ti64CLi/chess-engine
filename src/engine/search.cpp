@@ -53,7 +53,7 @@ int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount
     return alpha;
 }
 
-int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsigned long long &moveCount, bool orderingMoves) {
+int alphabeta(engine::Game &game, unsigned int maxDepth, unsigned int depth, int alpha, int beta, unsigned long long &moveCount, bool orderingMoves) {
     if (depth == 0) {
         return quiesceSearch(game, alpha, beta, moveCount, orderingMoves);
     }
@@ -106,11 +106,13 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
         }
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int evaluation = -alphabeta(game, depth - 1, -beta, -alpha, moveCount, orderingMoves);
+        int evaluation = -alphabeta(game, maxDepth, depth - 1, -beta, -alpha, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
 
         if (evaluation >= MAX_SCORE - 256) { // to find and force check mate move
             evaluation--;
+        } else if (evaluation <= MIN_SCORE + 256) {
+            evaluation++;
         }
 
         if (evaluation >= bestMoveValuation.second) {
@@ -130,7 +132,7 @@ int alphabeta(engine::Game &game, unsigned int depth, int alpha, int beta, unsig
     return bestMoveValuation.second;
 }
 
-MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCount, bool orderingMoves) {
+MoveValuation negaMax(Game &game, unsigned int maxDepth, unsigned int depth, unsigned long long &moveCount, bool orderingMoves) {
     MoveValuation bestMoveValuation = {Move(), MIN_SCORE};
     std::vector<Move> legalMoves;
 
@@ -162,11 +164,13 @@ MoveValuation negaMax(Game &game, unsigned int depth, unsigned long long &moveCo
         // std::cout << "Current move evaluated : " << utils::caseNameFromId(currentMove.getOriginSquare()) << utils::caseNameFromId(currentMove.getTargetSquare()) << " (valuation = ";
 
         engine::MoveSaveState savedState = game.doMove(currentMove);
-        int moveScore = -alphabeta(game, depth - 1, -32000, 32000, moveCount, orderingMoves);
+        int moveScore = -alphabeta(game, maxDepth, depth - 1, -32000, 32000, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
 
         if (moveScore >= MAX_SCORE - 256) {
             moveScore--;
+        } else if (moveScore <= MIN_SCORE + 256) {
+            moveScore++;
         }
 
         // std::cout << moveScore << "/ best = " << bestMoveValuation.second << ")" << std::endl;
