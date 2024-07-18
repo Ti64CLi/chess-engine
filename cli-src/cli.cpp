@@ -1,4 +1,5 @@
 #include "../src/engine/include/engine.hpp"
+#include "../src/engine/include/evaluation.hpp"
 #include "../src/engine/include/search.hpp"
 #include "../src/engine/include/utils.hpp"
 #include <algorithm>
@@ -424,7 +425,7 @@ int main() {
         } else if (splitCmd[0] == "hash") {
             std::cout << "Position hash : " << game.getHash() << "\n" << std::endl;
         } else if (splitCmd[0] == "eval") {
-            std::cout << "Position evaluation : " << game.evaluate() << std::endl;
+            std::cout << "Position evaluation : " << engine::evaluate(game) << std::endl;
         } else if (splitCmd[0] == "help") {
             std::cout << "Available commands :\n";
             std::cout << "\tposition [<fen string>] : show current FEN (or load a position if provided)\n";

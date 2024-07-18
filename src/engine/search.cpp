@@ -1,5 +1,6 @@
 #include "include/search.hpp"
 #include "include/engine.hpp"
+#include "include/evaluation.hpp"
 #include "include/transpositiontable.hpp"
 #include <algorithm>
 #include <vector>
@@ -9,7 +10,7 @@ static engine::TTable ttable;
 namespace engine {
 
 int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount, bool orderMoves) {
-    int stand_pat = game.evaluate();
+    int stand_pat = evaluate(game);
 
     if (stand_pat >= beta) {
         return beta;
@@ -22,15 +23,6 @@ int quiesceSearch(Game &game, int alpha, int beta, unsigned long long &moveCount
     std::vector<unsigned int> orderedIndices;
 
     game.generateAllLegalMoves(legalMoves, true);
-
-    // DON'T DO THAT, IT CAN BE EMPTY SINCE IT'S ONLY CAPTURES
-    /*if (legalMoves.empty()) { // mate
-        if (game.isAttackedBy(game.getKingSquare(game.getActiveColor()), engine::getOppositeColor(game.getActiveColor()))) { // checkmate
-            return MIN_SCORE;
-        }
-
-        return NULL_SCORE; // stalemate
-    }*/
 
     if (orderMoves) {
         game.orderMoves(legalMoves, orderedIndices);

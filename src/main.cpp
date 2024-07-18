@@ -1,3 +1,4 @@
+#include "engine/include/evaluation.hpp"
 #include "engine/include/utils.hpp"
 #include "include/ui.hpp"
 #include "engine/include/search.hpp"
@@ -7,7 +8,7 @@
 #include <vector>
 
 #define BOARD_RECTANGLE_WIDTH 45
-#define AI_DEPTH 5
+#define AI_DEPTH 6
 
 int main() {
     std::string title("Chess engine v");
@@ -62,7 +63,7 @@ int main() {
             savedMoves.push_back(bestMoveValuation.first);
             savedStates.push_back(game.doMove(bestMoveValuation.first));
 
-            std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << game.evaluate() << std::endl;
+            std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << engine::evaluate(game) << std::endl;
         } else {
             int event = 64;
 
@@ -92,7 +93,7 @@ int main() {
                             savedMoves.push_back(move);
                             savedStates.push_back(game.doMove(move));
 
-                            std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << game.evaluate() << std::endl;
+                            std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << engine::evaluate(game) << std::endl;
 
                             break;
                         }
