@@ -9,7 +9,7 @@
 #include <vector>
 
 #define BOARD_RECTANGLE_WIDTH 45
-#define AI_DEPTH 6
+#define SEARCH_DEPTH 10
 
 int main() {
     std::string title("Chess engine v");
@@ -51,7 +51,7 @@ int main() {
 
         if (bestMoveValuation.second == 0xc0ffee) {
             unsigned long long moveCount = 0;
-            bestMoveValuation = engine::negaMax(game, AI_DEPTH, moveCount, true);
+            bestMoveValuation = engine::negaMax(game, SEARCH_DEPTH, SEARCH_DEPTH, moveCount, true);
             std::cout << "AI move : " << game.move2str(bestMoveValuation.first) << " with valuation " << bestMoveValuation.second << std::endl;
             std::cout << "AI move : " << utils::caseNameFromId(bestMoveValuation.first.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.first.getTargetSquare()) << std::endl;
             if (abs(bestMoveValuation.second) >= engine::MAX_SCORE - 256) {
