@@ -1,4 +1,5 @@
 #include "include/movesgeneration.hpp"
+#include "include/piece.hpp"
 #include "include/utils.hpp"
 #include "include/engine.hpp"
 #include <iostream>
@@ -223,6 +224,30 @@ int Game::loadPosition(const std::string fen) {
     this->generate_hash();
 
     return 0;
+}
+
+Result Game::result(std::vector<Move> &legalMoves) {
+    bool inCheck = this->isAttackedBy(this->getKingSquare(this->getActiveColor()), getOppositeColor(this->getActiveColor()));
+
+    if (this->halfMoveNumber >= 100) {
+        if (legalMoves.size() > 0) { // if not mate
+            return Result::Draw;
+        } else if (inCheck) {
+            return Result::CheckMate;
+        } else {
+            return Result::StaleMate;
+        }
+    }
+
+    if (legalMoves.size() == 0) {
+        if (inCheck) { 
+            return Result::CheckMate;
+        } else {
+            return Result::StaleMate;
+        }
+    }
+
+    return Result::Undecided;
 }
 
 bool Game::isAttackedBy(unsigned int squareId, Color color) {

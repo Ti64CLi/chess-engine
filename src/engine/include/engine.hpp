@@ -58,6 +58,13 @@ struct MoveSaveState {
     std::unordered_map<Color, unsigned int> kingSquare;
 };
 
+enum Result {
+    Draw,
+    CheckMate,
+    StaleMate,
+    Undecided,
+};
+
 class Game {
     private:
         std::vector<Piece> board;
@@ -82,6 +89,7 @@ class Game {
         int loadPosition(const std::string fen);
         void generate_hash();
 
+        Result result(std::vector<Move> &legalMoves);
         bool isAttackedBy(unsigned int squareId, Color color);
 
         MoveSaveState saveState();
