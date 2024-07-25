@@ -222,7 +222,7 @@ int Game::loadPosition(const std::string fen) {
     this->fullMoveNumber = std::stoi(splitFEN[5]); // TODO : should handle potential exception
 
     this->generate_hash();
-
+    this->history.clear();
     this->history.push_back({this->hash, Move()});
 
     return 0;
