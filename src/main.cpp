@@ -46,7 +46,10 @@ int main() {
             inGame = false;
             break;
         } else if (result == engine::Result::CheckMate) {
-            std::cout << "Check mate ! " << (game.getActiveColor() == engine::Color::White ? "Black" : "White") << " wins !" << std::endl;
+            std::cout << "Check mate ! " 
+                      << (game.getActiveColor() == engine::Color::White ? "Black" : "White") 
+                      << " wins !" 
+                      << std::endl;
 
             inGame = false;
             break;
