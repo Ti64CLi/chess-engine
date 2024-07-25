@@ -1,4 +1,5 @@
 #include "engine/include/evaluation.hpp"
+#include "engine/include/piece.hpp"
 #include "engine/include/utils.hpp"
 #include "include/ui.hpp"
 #include "engine/include/search.hpp"
@@ -9,7 +10,7 @@
 #include <vector>
 
 #define BOARD_RECTANGLE_WIDTH 45
-#define SEARCH_DEPTH 10
+#define SEARCH_DEPTH 5
 
 int main() {
     std::string title("Chess engine v");
@@ -31,11 +32,26 @@ int main() {
     std::vector<engine::Move> savedMoves;
     engine::MoveValuation bestMoveValuation = {engine::Move(), 0xc0ffee};
 
-    ui::init(title, BOARD_RECTANGLE_WIDTH, 2.0f);
+    ui::init(title, BOARD_RECTANGLE_WIDTH, 3.0f);
 
     std::vector<engine::Move> moves;
 
     while (inGame) {
+        engine::generateAllLegalMoves(game, moves);
+        engine::Result result = game.result(moves);
+
+        if (result == engine::Result::Draw) {
+            std::cout << "Draw !" << std::endl;
+
+            inGame = false;
+            break;
+        } else if (result == engine::Result::CheckMate) {
+            std::cout << "Check mate ! " << (game.getActiveColor() == engine::Color::White ? "Black" : "White") << " wins !" << std::endl;
+
+            inGame = false;
+            break;
+        }
+
         ui::clear();
         ui::renderBoard();
 
@@ -44,7 +60,7 @@ int main() {
         }
 
         ui::renderPosition(game.getPositionFEN());
-        ui::renderMoves(moves);
+        //ui::renderMoves(moves);
         ui::renderCapturedPieces(0, game.getCapturedPieces(engine::Color::Black));
         ui::renderCapturedPieces(1, game.getCapturedPieces(engine::Color::White));
         ui::show();
@@ -55,17 +71,17 @@ int main() {
             std::cout << "AI move : " << game.move2str(bestMoveValuation.first) << " with valuation " << bestMoveValuation.second << std::endl;
             std::cout << "AI move : " << utils::caseNameFromId(bestMoveValuation.first.getOriginSquare()) << utils::caseNameFromId(bestMoveValuation.first.getTargetSquare()) << std::endl;
             if (abs(bestMoveValuation.second) >= engine::MAX_SCORE - 256) {
-                std::cout << "Check mate in " << (engine::MAX_SCORE - abs(bestMoveValuation.second)) << " full moves" << std::endl;
+                std::cout << "Check mate in " << (engine::MAX_SCORE - abs(bestMoveValuation.second)) << " moves" << std::endl;
             }
         }
-        if (game.getActiveColor() == engine::Color::Black) { // AI turn
+        //if (game.getActiveColor() == engine::Color::Black) { // AI turn
             bestMoveValuation.second = 0xc0ffee;
 
             savedMoves.push_back(bestMoveValuation.first);
             savedStates.push_back(game.doMove(bestMoveValuation.first));
 
             std::cout << "New position : " << game.getPositionFEN() << " with valuation : " << engine::evaluate(game) << std::endl;
-        } else {
+        /*} else {
             int event = 64;
 
             if ((event = ui::manageEvents()) == ERROR_EVENT) {
@@ -127,7 +143,7 @@ int main() {
 
                 std::cout << "New position : " << game.getPositionFEN() << std::endl;
             }
-        }
+        }*/
     }
 
     ui::close();
