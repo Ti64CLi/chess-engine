@@ -80,12 +80,23 @@ int alphabeta(engine::Game &game, unsigned int maxDepth, unsigned int depth, int
 
     generateAllLegalMoves(game, legalMoves);
 
-    if (legalMoves.empty()) { // mate
-        if (game.isAttackedBy(game.getKingSquare(game.getActiveColor()), engine::getOppositeColor(game.getActiveColor()))) { // checkmate
-            return MIN_SCORE;
+    engine::Result result = game.result(legalMoves);
+
+    if (result != engine::Result::Undecided) {
+        int evaluation = 0;
+
+        switch (result) {
+            case engine::Result::CheckMate: {
+                evaluation = MIN_SCORE;
+                evaluation += maxDepth - depth;
+
+                break;
+            }
+            default:
+                break;
         }
-        
-        return NULL_SCORE; // stalemate 
+
+        return evaluation;
     }
 
     std::vector<unsigned int> orderedIndices;
@@ -108,12 +119,6 @@ int alphabeta(engine::Game &game, unsigned int maxDepth, unsigned int depth, int
         engine::MoveSaveState savedState = game.doMove(currentMove);
         int evaluation = -alphabeta(game, maxDepth, depth - 1, -beta, -alpha, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
-
-        if (evaluation >= MAX_SCORE - 256) { // to find and force check mate move
-            evaluation--;
-        } else if (evaluation <= MIN_SCORE + 256) {
-            evaluation++;
-        }
 
         if (evaluation >= bestMoveValuation.second) {
             bestMoveValuation.second = evaluation;
@@ -138,10 +143,26 @@ MoveValuation negaMax(Game &game, unsigned int maxDepth, unsigned int depth, uns
 
     generateAllLegalMoves(game, legalMoves);
 
-    if (legalMoves.empty()) { // mate
-        if (!game.isAttackedBy(game.getKingSquare(game.getActiveColor()), getOppositeColor(game.getActiveColor()))) { // stalemate
-            bestMoveValuation.second = 0;
-        } // else checkmate
+    engine::Result result = game.result(legalMoves);
+
+    if (result != engine::Result::Undecided) {
+        switch (result) {
+            case engine::Result::Draw: {
+                bestMoveValuation.second = 0;
+                bestMoveValuation.second += (game.getHash() & 0x2) - 1;
+
+                break;
+            }
+            case engine::Result::CheckMate: {
+                bestMoveValuation.second = MIN_SCORE;
+                bestMoveValuation.second += (maxDepth - depth); // distance to mate
+                // DTM should always be 0 here, but I'm keeping it for clarity sake
+
+                break;
+            }
+            default:
+                break;
+        }
 
         return bestMoveValuation;
     }
@@ -166,12 +187,6 @@ MoveValuation negaMax(Game &game, unsigned int maxDepth, unsigned int depth, uns
         engine::MoveSaveState savedState = game.doMove(currentMove);
         int moveScore = -alphabeta(game, maxDepth, depth - 1, -32000, 32000, moveCount, orderingMoves);
         game.undoMove(currentMove, savedState);
-
-        if (moveScore >= MAX_SCORE - 256) {
-            moveScore--;
-        } else if (moveScore <= MIN_SCORE + 256) {
-            moveScore++;
-        }
 
         // std::cout << moveScore << "/ best = " << bestMoveValuation.second << ")" << std::endl;
 
