@@ -223,6 +223,8 @@ int Game::loadPosition(const std::string fen) {
 
     this->generate_hash();
 
+    this->history.push_back({this->hash, Move()});
+
     return 0;
 }
 
@@ -230,12 +232,10 @@ Result Game::result(std::vector<Move> &legalMoves) {
     bool inCheck = this->isAttackedBy(this->getKingSquare(this->getActiveColor()), getOppositeColor(this->getActiveColor()));
 
     if (this->halfMoveNumber >= 100) {
-        if (legalMoves.size() > 0) { // if not mate
-            return Result::Draw;
-        } else if (inCheck) {
+        if (inCheck && legalMoves.size() == 0) {
             return Result::CheckMate;
-        } else {
-            return Result::StaleMate;
+        } else { // stalemate count as draw
+            return Result::Draw;
         }
     }
 
@@ -243,11 +243,31 @@ Result Game::result(std::vector<Move> &legalMoves) {
         if (inCheck) { 
             return Result::CheckMate;
         } else {
-            return Result::StaleMate;
+            return Result::Draw;
         }
     }
 
+    if (this->hasRepeated()) {
+        return Result::Draw;
+    }
+
     return Result::Undecided;
+}
+
+bool Game::hasRepeated() {
+    int repeats = 0;
+
+    for (const std::pair<Key, Move> &previousPosition : this->history) {
+        if (this->hash == previousPosition.first) {
+            repeats++;
+        }
+
+        if (repeats == 2) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool Game::isAttackedBy(unsigned int squareId, Color color) {
@@ -396,13 +416,14 @@ MoveSaveState Game::doMove(Move &move) {
     }
 
     this->switchActiveColor();
-
     this->update_hash(move, savedState);
+    this->history.push_back({this->hash, move});
 
     return savedState;
 }
 
 void Game::undoMove(Move &move, MoveSaveState savedState) {
+    this->history.pop_back();
     this->update_hash(move, savedState);
 
     this->switchActiveColor();

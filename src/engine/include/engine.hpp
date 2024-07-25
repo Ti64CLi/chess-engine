@@ -61,7 +61,6 @@ struct MoveSaveState {
 enum Result {
     Draw,
     CheckMate,
-    StaleMate,
     Undecided,
 };
 
@@ -70,6 +69,8 @@ class Game {
         std::vector<Piece> board;
         Zobrist zobristKeys;
         Key hash;
+
+        std::vector<std::pair<Key, Move>> history;
         //std::unordered_map<Color, std::vector<unsigned int>> attacks;
         // std::vector<Move> legalMoves;
 
@@ -90,6 +91,7 @@ class Game {
         void generate_hash();
 
         Result result(std::vector<Move> &legalMoves);
+        bool hasRepeated();
         bool isAttackedBy(unsigned int squareId, Color color);
 
         MoveSaveState saveState();
