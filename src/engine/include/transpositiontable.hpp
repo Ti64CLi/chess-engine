@@ -1,7 +1,7 @@
 #ifndef __TRANSPOSITION_TABLE_HPP__
 #define __TRANSPOSITION_TABLE_HPP__
 
-#include "engine.hpp"
+#include "move.hpp"
 #include "zobrist.hpp"
 
 #define TTABLE_SIZE 1000000
